@@ -551,3 +551,6 @@ body.cur-on .cur-dot,body.cur-on .cur-ring{opacity:1}
 .genart{opacity:0;animation:genfade .7s var(--ease) forwards}
 @keyframes genfade{to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.genart{animation:none;opacity:1}}
+
+/* FLUID — behind the concierge only, and only on hardware that can spare it. */
+.fx-fluid{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}

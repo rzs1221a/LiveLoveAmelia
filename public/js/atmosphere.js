@@ -10,6 +10,8 @@ import { addLayer } from './gl/sched.js';
 import { mountSeams } from './gl/views/seam.js';
 import { mountWater } from './gl/views/water.js';
 import { mountScenes } from './gl/views/scene.js';
+import { mountCaustics } from './gl/views/caustics.js';
+import { mountFluid } from './gl/views/fluid.js';
 
 if (!reduce && tier.get() > 0) {
   /* Device pixel ratio 1 on purpose: foam and caustics are low-frequency, and
@@ -18,6 +20,7 @@ if (!reduce && tier.get() > 0) {
   if (overlay) {
     addLayer(overlay);
     mountSeams(overlay);
+    mountCaustics(overlay);
   }
   /* The water needs its own small context: it has to sit *behind* the map's
    * SVG, and the shared overlay is deliberately in front of page content. */
@@ -25,4 +28,6 @@ if (!reduce && tier.get() > 0) {
   /* Static, so they cost no live context at all — one transient one draws
    * all eleven and is released immediately. */
   mountScenes();
+  /* Gated hardest of all: it runs behind a text input. */
+  mountFluid();
 }

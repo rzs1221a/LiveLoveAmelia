@@ -71,7 +71,10 @@ const browser = await chromium.launch();
 for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone", width: 400, height: 800 }]) {
   for (const motion of ["no-preference", "reduce"]) {
     for (const scheme of ["light", "dark"]) {
-      const label = `${vp.name}/${motion}/${scheme}`;
+      // The last desktop pass pretends to be a capable machine so the tier-2
+      // effects actually run. Without it the fluid simulation ships untested.
+      const capable = vp.name === "desktop" && motion === "no-preference" && scheme === "dark";
+      const label = `${vp.name}/${motion}/${scheme}${capable ? " [tier2]" : ""}`;
       const ctx = await browser.newContext({
         viewport: { width: vp.width, height: vp.height },
         reducedMotion: motion === "reduce" ? "reduce" : "no-preference",
@@ -102,6 +105,8 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
       });
 
       const t = (name, cond) => { if (!cond) failures.push(`${label}: ${name}`); };
+
+      if (capable) await page.addInitScript(() => Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 12 }));
 
       // Count every WebGL context the page asks for, so a leak shows up as a number.
       await page.addInitScript(() => {
@@ -228,6 +233,27 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
         t("seams classify their neighbours correctly", at.bad === 0);
         t("seam views registered", at.sched.views >= 6);
         t("overlay mounted", await page.locator("#fx-overlay").count() === 1);
+      }
+
+      if (capable) {
+        // Stir the fluid, then check it built, ran, and stayed inside budget.
+        const box = await page.evaluate(() => { const r = document.querySelector("#concierge").getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+        await page.evaluate(() => document.querySelector("#concierge").scrollIntoView({ block: "center", behavior: "instant" }));
+        await page.waitForTimeout(400);
+        for (let i = 0; i <= 12; i++) { await page.mouse.move(box.x + box.w * (0.2 + 0.5 * i / 12), box.y + box.h * 0.4); await page.waitForTimeout(16); }
+        await page.waitForTimeout(300);
+        const f = await page.evaluate(async () => {
+          const s2 = await import("/js/gl/sched.js");
+          return { fluid: !!document.querySelector(".fx-fluid"), tier: s2.debug().tier, views: s2.debug().views };
+        });
+        t("tier 2 reached", f.tier === 2);
+        t("fluid mounted", f.fluid);
+        t("caustics registered", f.views >= 8);
+
+        // Typing must stop the simulation dead.
+        await page.locator("#chatInput").focus();
+        await page.waitForTimeout(120);
+        t("fluid yields to the chat input", await page.evaluate(() => document.activeElement?.id === "chatInput"));
       }
 
       const gl = await page.evaluate(async () => {

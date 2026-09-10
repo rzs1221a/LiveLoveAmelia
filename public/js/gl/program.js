@@ -14,11 +14,16 @@ const CTX_OPTS = {
   powerPreference: 'high-performance',
 };
 
-/* Returns { gl, canvas, onLost, onRestored, dispose } or null. */
-export function context(canvas, opts = {}) {
+/* Returns { gl, gl2, canvas, onLost, onRestored, dispose } or null.
+ * `prefer2` asks for WebGL2 first, which the fluid simulation wants for its
+ * single-channel float render targets. */
+export function context(canvas, opts = {}, prefer2 = false) {
   const o = { ...CTX_OPTS, ...opts };
-  let gl = null;
-  try { gl = canvas.getContext('webgl', o) || canvas.getContext('experimental-webgl', o); } catch {}
+  let gl = null, gl2 = false;
+  try {
+    if (prefer2) { gl = canvas.getContext('webgl2', o); gl2 = !!gl; }
+    if (!gl) gl = canvas.getContext('webgl', o) || canvas.getContext('experimental-webgl', o);
+  } catch {}
   if (!gl) return null;
   stats.contexts++; stats.created++;
 
@@ -34,7 +39,7 @@ export function context(canvas, opts = {}) {
   });
 
   return {
-    gl, canvas,
+    gl, gl2, canvas,
     onLost: f => handlers.lost.push(f),
     onRestored: f => handlers.restored.push(f),
     dispose() {
