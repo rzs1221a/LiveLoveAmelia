@@ -2,6 +2,12 @@
   publish = "public"
   functions = "netlify/functions"
 
+[build.environment]
+  # Playwright is a dev-only tool here (the smoke test and the OG image render).
+  # Netlify installs devDependencies, so stop its postinstall pulling ~150MB of
+  # browsers into a build that never opens one.
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1"
+
 [functions]
   node_bundler = "esbuild"
   included_files = ["src/**"]
