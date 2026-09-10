@@ -80,8 +80,8 @@ void main(){
   /* A slow drift south-east, the way the current actually sets past the
    * island, with a second finer layer over it. */
   vec2 flow = vec2(0.06, -0.10) * uT;
-  float body = fbm(tc * 5.0 + flow);
-  float fine = fbm(tc * 13.0 - flow * 1.7);
+  float body = fbm3(tc * 5.0 + flow);
+  float fine = fbm3(tc * 13.0 - flow * 1.7);
 
   vec3 col = mix(uShallow, uWater, smoothstep(0.0, 0.55, shore));
   col += (body - 0.5) * 0.035;
@@ -170,7 +170,7 @@ export function mountWater() {
   const tex = landField(svg);
   if (!tex) return false;
 
-  const layer = createLayer('fx-water', { dpr: 1.25, host: map });
+  const layer = createLayer('fx-water', { dpr: 1, host: map });
   if (!layer) return false;
   const prog = layer.shader('island water', FRAG);
   if (!prog) { layer.dispose(); return false; }

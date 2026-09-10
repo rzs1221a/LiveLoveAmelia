@@ -74,8 +74,14 @@ import * as tier from './gl/tier.js';
     float aspect = r.x / r.y;
     float hor = 0.60 + 0.015 * sin(t * 0.05);
     float a = uSunAlt;
+    /* A floor under the night. The true altitude at 10pm is around -45, where
+     * every twilight term collapses to its base and the whole hero renders at
+     * about #04070F — a black rectangle that reads as a failed page rather
+     * than as evening. Palette lookups clamp to late dusk; stars and the moon
+     * below still use the real altitude, so night still looks like night. */
+    float pa = max(a, -4.0);
 
-    vec3 zen = zenith(a), hcol = horizonCol(a);
+    vec3 zen = zenith(pa), hcol = horizonCol(pa);
     float night = smoothstep(0.0, -12.0, a);
     vec3 col;
 
@@ -86,9 +92,9 @@ import * as tier from './gl/tier.js';
       col += vec3(0.9, 0.93, 1.0) * starField(vec2(uv.x * aspect, uv.y)) * night;
 
       /* Cloud band, lit from wherever the sun actually is. */
-      float cl = fbm(vec2(q.x * 1.6 + t * 0.012, uv.y * 3.0));
-      float lit = mix(0.35, 1.0, smoothstep(-6.0, 8.0, a));
-      col += mix(vec3(0.10,0.12,0.13), vec3(0.30,0.20,0.16), smoothstep(6.0,-4.0,a))
+      float cl = fbm3(vec2(q.x * 1.6 + t * 0.012, uv.y * 3.0));
+      float lit = mix(0.35, 1.0, smoothstep(-6.0, 8.0, pa));
+      col += mix(vec3(0.10,0.12,0.13), vec3(0.30,0.20,0.16), smoothstep(6.0,-4.0,pa))
              * smoothstep(0.45, 0.8, cl) * (1.0 - k) * lit;
 
       /* The disc, only while it is genuinely in frame. */
@@ -110,22 +116,22 @@ import * as tier from './gl/tier.js';
       float d = (hor - uv.y) / hor;
       float persp = 1.0 / (d * 6.0 + 0.06);
       vec2 w = vec2(q.x * persp * 1.4 + m.x * 0.15, persp * 2.2 + t * 0.22);
-      float wv = fbm(w * 1.3) * 0.7 + fbm(w * 3.1 + t * 0.05) * 0.3;
+      float wv = fbm(w * 1.3) * 0.7 + fbm3(w * 3.1 + t * 0.05) * 0.3;
       float crest = smoothstep(0.62, 0.9, wv);
-      col = mix(seaDeep(a), seaNear(a), d * 0.9 + wv * 0.25);
+      col = mix(seaDeep(pa), seaNear(pa), d * 0.9 + wv * 0.25);
 
       /* A glint path only exists when something is up there to cast it. */
       float sunUp = smoothstep(-2.0, 4.0, a) * uSun.z;
       if (sunUp > 0.001) {
         float g = exp(-pow(abs(q.x - uSun.x * aspect) * (2.5 + d * 9.0), 2.0)) * (1.0 - d) * (0.5 + wv);
-        col += mix(vec3(1.0,0.78,0.52), vec3(0.90,0.94,0.94), smoothstep(0.0,12.0,a)) * g * 0.55 * pow(1.0 - d, 1.5) * sunUp;
+        col += mix(vec3(1.0,0.78,0.52), vec3(0.90,0.94,0.94), smoothstep(0.0,12.0,pa)) * g * 0.55 * pow(1.0 - d, 1.5) * sunUp;
       }
       float moonUp = smoothstep(-1.0, 6.0, uMoonAlt) * uMoon.z * night * uMoon.w;
       if (moonUp > 0.001) {
         float g = exp(-pow(abs(q.x - uMoon.x * aspect) * (3.5 + d * 11.0), 2.0)) * (1.0 - d) * (0.45 + wv);
         col += vec3(0.80,0.86,0.95) * g * 0.30 * pow(1.0 - d, 1.6) * moonUp;
       }
-      col += vec3(0.8,0.88,0.9) * crest * 0.10 * (1.0 - d) * mix(0.35, 1.0, smoothstep(-8.0, 4.0, a));
+      col += vec3(0.8,0.88,0.9) * crest * 0.10 * (1.0 - d) * mix(0.35, 1.0, smoothstep(-8.0, 4.0, pa));
       col = mix(col, hcol * 0.9, pow(1.0 - d, 14.0) * 0.5);
     }
 
@@ -140,14 +146,16 @@ import * as tier from './gl/tier.js';
   if (!prog) { c.remove(); return; }
   prog.use();
 
-  let mx = 0, my = 0, tx = 0, ty = 0, vis = true, lost = false;
+  let mx = 0, my = 0, tx = 0, ty = 0, vis = true, lost = false, stopped = false;
   addEventListener('pointermove', e => {
     tx = e.clientX / innerWidth - .5; ty = e.clientY / innerHeight - .5;
   }, { passive: true });
 
   let pending = 0;
   function size() {
-    const dpr = Math.min(devicePixelRatio, 1.5);
+    /* 1.5x device pixels on a 1440-wide window is 2.9 megapixels of
+     * five-octave noise, every frame. The waves carry no detail that fine. */
+    const dpr = Math.min(devicePixelRatio, 1.0);
     const w = Math.max(1, Math.round(c.clientWidth * dpr)), h = Math.max(1, Math.round(c.clientHeight * dpr));
     if (c.width === w && c.height === h) return;      /* mobile URL-bar resize fires constantly */
     c.width = w; c.height = h; gl.viewport(0, 0, w, h);
@@ -156,7 +164,10 @@ import * as tier from './gl/tier.js';
   size();
   new ResizeObserver(resize).observe(c);
 
-  const io = new IntersectionObserver(es => es.forEach(e => { vis = e.isIntersecting; }));
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    vis = e.isIntersecting;
+    if (vis) ticker.add(draw); else ticker.remove(draw);
+  }));
   io.observe(c);
 
   ctx.onLost(() => { lost = true; ticker.remove(draw); });
@@ -176,8 +187,12 @@ import * as tier from './gl/tier.js';
     sky = { s, mo, sunAlt: a.sun.alt, moonAlt: a.moon.alt, illum: a.moon.illum };
   }
 
+  let heroFrame = 0;
   function draw(now, dt) {
-    if (!vis || lost) return;
+    if (!vis || lost || stopped) return;
+    /* Half rate. The swell is slow enough that nobody can tell, and this is
+     * the largest single draw on the page. */
+    if (ticker.refreshHz() >= 50 && (++heroFrame & 1)) return;
     refreshSky(now);
     /* Frame-rate independent easing, so the parallax feels the same at 60 and 120. */
     const k = 1 - Math.pow(0.001, dt / 1000 * 0.6);
@@ -194,7 +209,10 @@ import * as tier from './gl/tier.js';
     drawQuad(gl, prog);
   }
   ticker.add(draw);
-  tier.onChange(t => { if (t === 0) { ticker.remove(draw); c.remove(); ctx.dispose(); } });
+  /* Stop drawing, but leave the canvas holding its last frame. Removing it
+   * made the ocean vanish mid-session, which is a far louder failure than
+   * the frame rate the governor was trying to protect. */
+  tier.onChange(t => { if (t === 0) { stopped = true; ticker.remove(draw); } });
 })();
 
 /* ---------- Intro + parallax ---------- */
