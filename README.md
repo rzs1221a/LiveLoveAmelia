@@ -6,6 +6,8 @@ Static site + three Netlify Functions. No build step: Netlify publishes `public/
 public/index.html          markup, SEO head, JSON-LD, hidden Netlify forms
 public/styles.css          all styling (design tokens + preloader stay inline in <head>)
 public/js/                 ES modules, entry point js/main.js
+public/js/gl/              the effect layer: ticker, shaders, scheduler, solar math
+public/js/gl/views/        one file per effect (seam, water, scene, caustics, fluid)
 public/kelly.jpg           headshot          public/og.png   social card (generated)
 public/sitemap.xml  public/robots.txt
 
@@ -31,6 +33,43 @@ scripts/check.mjs          Playwright smoke test across viewports, themes and mo
 | `voice.js` `leads.js` | mic + read-aloud; in-chat handoff card, sharing, `postNetlifyForm()` |
 | `match.js` `value.js` `afford.js` `compare.js` `book.js` | quiz, relocation brief, seller stepper, affordability, compare, island book |
 | `polish.js` | custom cursor, magnetic buttons, signature draw-on, ocean ambience |
+| `atmosphere.js` | mounts the effect layer and every view; the one place to disable all of it |
+| `gl/ticker.js` | the page's single frame loop, wrapping `gsap.ticker` when it is there |
+| `gl/sun.js` | solar and lunar position, computed locally — no API, no key |
+| `gl/tier.js` | capability probe and the frame-cost governor |
+| `gl/layer.js` `gl/sched.js` | shared canvas with scissored views; three-phase scheduler |
+
+### The effect layer
+
+Everything below is decoration sitting on top of a page that already works.
+If the tier probe says no, a context fails, or a shader will not compile, the
+site is exactly what it was without any of it.
+
+**Tiers.** 0 is reduced motion, no WebGL, or a device that struggled: nothing
+runs. 1 is the hero, the island water and the seams. 2 adds caustics and the
+fluid. The governor only ever demotes — a device that struggled once will
+struggle again, and promoting back reads as flickering.
+
+**Contexts.** Four at most: the hero, one shared overlay, the island water,
+and the fluid. A context per effect would need about twenty, and browsers
+force-lose the oldest well before that, so the failure would be intermittent
+black rectangles rather than anything diagnosable. The eleven generated
+scenes use no live context at all — one transient context draws them at load
+and is released.
+
+**The sky is real.** Sun and moon come from the Astronomical Almanac series
+with Bennett refraction, checked against NOAA: sunrise within a minute, the
+equinox within an hour, azimuth exactly due south at local noon. Longitude
+comes from the visitor's own timezone rather than the island's, so a visitor
+in London at 3pm sees an afternoon rather than a black midnight hero, while
+declination still comes from the real date and the seasons stay true.
+
+**Tuning needs eyes.** Several problems here were invisible in code and
+obvious in a screenshot: sections that declare no background compute to
+transparent black and painted a hard black bar; the island water at full
+opacity turned elegant line art into mud; the fluid's first tuning read as a
+lava lamp. `scripts/.out/` holds the throwaway screenshot harness used for
+that. Look at changes to any of this before trusting them.
 
 ## Run
 ```
@@ -38,6 +77,8 @@ npm i
 cp .env.example .env   # add ANTHROPIC_API_KEY
 npx netlify dev        # http://localhost:8888
 npm run check          # Playwright smoke test (mocks the AI endpoints; no key needed)
+                       # includes one pass reporting capable hardware, so the
+                       # tier-2 effects actually execute rather than being skipped
 npm run og             # regenerate public/og.png
 ```
 
