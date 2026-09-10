@@ -8,6 +8,7 @@ import * as tier from './gl/tier.js';
 import { createLayer } from './gl/layer.js';
 import { addLayer } from './gl/sched.js';
 import { mountSeams } from './gl/views/seam.js';
+import { mountWater } from './gl/views/water.js';
 
 if (!reduce && tier.get() > 0) {
   /* Device pixel ratio 1 on purpose: foam and caustics are low-frequency, and
@@ -17,4 +18,7 @@ if (!reduce && tier.get() > 0) {
     addLayer(overlay);
     mountSeams(overlay);
   }
+  /* The water needs its own small context: it has to sit *behind* the map's
+   * SVG, and the shared overlay is deliberately in front of page content. */
+  mountWater();
 }

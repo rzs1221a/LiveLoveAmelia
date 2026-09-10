@@ -12,12 +12,17 @@ import { context, program, drawQuad } from './program.js';
  * additive, the same bargain the film grain already makes. */
 export const Z = 40;
 
-export function createLayer(id, { dpr = 1 } = {}) {
+/* `host` attaches the canvas inside an element instead of pinning it to the
+ * viewport, for views that must sit behind page content rather than over it.
+ * The island water needs that: it belongs under the map's SVG. */
+export function createLayer(id, { dpr = 1, host = null } = {}) {
   const canvas = document.createElement('canvas');
   canvas.id = id;
   canvas.setAttribute('aria-hidden', 'true');
-  canvas.style.cssText = `position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:${Z}`;
-  document.body.appendChild(canvas);
+  canvas.style.cssText = host
+    ? 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0'
+    : `position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:${Z}`;
+  (host || document.body).appendChild(canvas);
 
   const ctx = context(canvas, { alpha: true, premultipliedAlpha: true });
   if (!ctx) { canvas.remove(); return null; }
@@ -32,13 +37,15 @@ export function createLayer(id, { dpr = 1 } = {}) {
   const scale = Math.min(devicePixelRatio || 1, dpr);
   let W = 0, H = 0, pending = 0;
   function size() {
-    const w = Math.max(1, Math.round(innerWidth * scale)), h = Math.max(1, Math.round(innerHeight * scale));
+    const cw = host ? canvas.clientWidth : innerWidth, ch = host ? canvas.clientHeight : innerHeight;
+    const w = Math.max(1, Math.round(cw * scale)), h = Math.max(1, Math.round(ch * scale));
     if (w === W && h === H) return;
     W = canvas.width = w; H = canvas.height = h;
   }
   const resize = () => { cancelAnimationFrame(pending); pending = requestAnimationFrame(size); };
   size();
   addEventListener('resize', resize, { passive: true });
+  if (host) new ResizeObserver(resize).observe(canvas);
 
   const programs = new Map();
   ctx.onLost(() => { lost = true; });
@@ -71,11 +78,13 @@ export function createLayer(id, { dpr = 1 } = {}) {
     },
 
     /* rect is a live getBoundingClientRect in CSS pixels; GL's origin is at
-     * the bottom, hence the flip. */
+     * the bottom, hence the flip. A hosted layer measures against its own
+     * canvas rather than the viewport. */
     drawView(prog, rect, setUniforms) {
       if (lost || !prog) return;
-      const x = Math.round(rect.left * scale);
-      const y = Math.round((innerHeight - rect.top - rect.height) * scale);
+      const base = host ? canvas.getBoundingClientRect() : { left: 0, top: 0, height: innerHeight };
+      const x = Math.round((rect.left - base.left) * scale);
+      const y = Math.round((base.top + base.height - rect.top - rect.height) * scale);
       const w = Math.round(rect.width * scale), h = Math.round(rect.height * scale);
       if (w <= 0 || h <= 0 || y + h < 0 || y > H) return;
       gl.viewport(x, y, w, h);

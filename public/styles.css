@@ -529,3 +529,14 @@ body.cur-on .cur-dot,body.cur-on .cur-ring{opacity:1}
    seams add nothing to the page's total length. */
 .seam{--seam-h:clamp(48px,7vw,100px);height:var(--seam-h);margin-block:calc(var(--seam-h) / -2);pointer-events:none}
 @media (max-width:700px){.seam{display:none}}
+
+/* ISLAND TRAFFIC — the light and the boats. SVG over the water canvas and
+   under the labels, because at this size vector edges beat shader ones. */
+.map-traffic{pointer-events:none}
+.map .beam{fill:url(#beamGrad);opacity:.30;mix-blend-mode:screen}
+.map .lamp{fill:var(--gold-2)}
+.map .wake{fill:none;stroke:none}
+.map .boat{fill:none;stroke:rgba(243,240,234,.75);stroke-width:1.1;stroke-linejoin:round}
+:root[data-theme="dark"] .map .boat{stroke:rgba(20,28,36,.7)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .map .boat{stroke:rgba(20,28,36,.7)}}
+@media (prefers-reduced-motion:reduce){.map-traffic{display:none}}
