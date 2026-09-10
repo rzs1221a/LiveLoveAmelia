@@ -540,3 +540,14 @@ body.cur-on .cur-dot,body.cur-on .cur-ring{opacity:1}
 :root[data-theme="dark"] .map .boat{stroke:rgba(20,28,36,.7)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .map .boat{stroke:rgba(20,28,36,.7)}}
 @media (prefers-reduced-motion:reduce){.map-traffic{display:none}}
+
+/* GENERATED SCENES — real places behind the portals and listing cards,
+   drawn once at load. The line art underneath stays as the fallback for
+   anything that cannot run them, and steps aside when they arrive. */
+.genart{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+.port .art.has-genart svg,.card .ph.has-genart svg{opacity:0;transition:opacity .5s var(--ease)}
+.port .art.has-genart{background:none}
+.card .ph.has-genart .sky{opacity:.35}
+.genart{opacity:0;animation:genfade .7s var(--ease) forwards}
+@keyframes genfade{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.genart{animation:none;opacity:1}}
