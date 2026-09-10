@@ -1,33 +1,23 @@
-/* Mounts the shared effect layer and everything drawn into it.
+/* Mounts the atmosphere: the seam shorelines and the island water.
  *
  * Nothing here is load-bearing. If the tier probe says no, or a context or a
- * shader fails, the page is exactly what it was before any of this existed —
- * every effect sits on top of a static treatment that already works. */
+ * shader fails, the page is exactly what it was before any of this existed. */
 import { reduce } from './core.js';
 import * as tier from './gl/tier.js';
-import { createLayer } from './gl/layer.js';
-import { addLayer } from './gl/sched.js';
 import { mountSeams } from './gl/views/seam.js';
 import { mountWater } from './gl/views/water.js';
 import { mountScenes } from './gl/views/scene.js';
-import { mountCaustics } from './gl/views/caustics.js';
-import { mountFluid } from './gl/views/fluid.js';
 
 if (!reduce && tier.get() > 0) {
-  /* Device pixel ratio 1 on purpose: foam and caustics are low-frequency, and
-   * a 6k-wide framebuffer for a soft gradient is not a trade worth making. */
-  const overlay = createLayer('fx-overlay', { dpr: 1 });
-  if (overlay) {
-    addLayer(overlay);
-    mountSeams(overlay);
-    mountCaustics(overlay);
-  }
-  /* The water needs its own small context: it has to sit *behind* the map's
-   * SVG, and the shared overlay is deliberately in front of page content. */
+  /* Each seam owns a small canvas inside its own element rather than sharing
+   * one fixed full-viewport canvas. A fixed canvas sat underneath the nav's
+   * backdrop blur and the grain's blend layer, so every frame it painted cost
+   * a full-viewport re-composite — and being fixed, it had to chase its host
+   * elements during a scroll and always lagged them. Hosted canvases scroll
+   * with the page, so they cannot drift, and they leave the compositor alone. */
+  mountSeams();
   mountWater();
-  /* Static, so they cost no live context at all — one transient one draws
+  /* Static, so they cost no live context at all — one transient context draws
    * all eleven and is released immediately. */
   mountScenes();
-  /* Gated hardest of all: it runs behind a text input. */
-  mountFluid();
 }

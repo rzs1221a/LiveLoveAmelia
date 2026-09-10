@@ -132,9 +132,16 @@ export async function mountScenes() {
   ];
   if (!hosts.length) return 0;
 
-  /* One context for all eleven, released the moment they are drawn. */
+  /* One context for all eleven, released the moment they are drawn, and one
+   * drawing buffer sized to the largest scene. Resizing per scene reallocated
+   * the buffer eleven times during page load; `preserveDrawingBuffer` on top
+   * of that disabled the driver's discard fast path for every one of them.
+   * The canvas is never in the document, so it is never composited and the
+   * buffer survives until the next draw regardless. */
+  const MAXW = Math.max(...hosts.map(h => h.w)), MAXH = Math.max(...hosts.map(h => h.h));
   const off = document.createElement('canvas');
-  const ctx = context(off, { alpha: false, premultipliedAlpha: false, preserveDrawingBuffer: true });
+  off.width = MAXW; off.height = MAXH;
+  const ctx = context(off, { alpha: false, premultipliedAlpha: false });
   if (!ctx) return 0;
   const gl = ctx.gl;
   const prog = program(gl, FRAG, undefined, 'generative scene');
@@ -143,14 +150,15 @@ export async function mountScenes() {
   let painted = 0;
   try {
     for (const host of hosts) {
-      off.width = host.w; off.height = host.h;
+      /* GL draws from the bottom-left, so a smaller scene lands in that
+       * corner and the crop has to come from the bottom of the buffer. */
       gl.viewport(0, 0, host.w, host.h);
       prog.use();
       gl.uniform2f(prog.u('uSize'), host.w, host.h);
       gl.uniform1f(prog.u('uSeed'), host.seed);
       gl.uniform1f(prog.u('uKind'), KIND[host.kind] ?? 0);
       drawQuad(gl, prog);
-      const bmp = await createImageBitmap(off);
+      const bmp = await createImageBitmap(off, 0, MAXH - host.h, host.w, host.h);
       if (paint(host, bmp)) painted++;
     }
   } catch (e) {

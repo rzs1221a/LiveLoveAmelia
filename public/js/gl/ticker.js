@@ -54,12 +54,17 @@ export const time = () => clock;
 
 /* Measured refresh rate, so per-view rates can be whole divisors of the real
  * panel instead of beating against it. */
-let hz = 60, samples = [], settled = false;
+let hz = 60, samples = [], settled = false, warmup = 0;
 function measure(dt) {
   if (settled || dt <= 0) return;
+  /* Skip the first stretch outright. Sampling from frame one measured the
+   * load — hydration, the font swap, the intro timeline — and latched a
+   * refresh rate as low as 30Hz forever, which then doubled every view's
+   * stride on exactly the machines that could least afford it. */
+  if (++warmup < 90) return;
   samples.push(dt);
   if (samples.length < 40) return;
-  const sorted = samples.slice(10).sort((a, b) => a - b);
+  const sorted = samples.slice().sort((a, b) => a - b);
   const median = sorted[sorted.length >> 1];
   if (median > 0) hz = Math.min(240, Math.max(24, Math.round(1000 / median)));
   settled = true; samples = [];
