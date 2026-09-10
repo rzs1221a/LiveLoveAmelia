@@ -103,6 +103,17 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
 
       const t = (name, cond) => { if (!cond) failures.push(`${label}: ${name}`); };
 
+      // Count every WebGL context the page asks for, so a leak shows up as a number.
+      await page.addInitScript(() => {
+        window.__glContexts = 0;
+        const orig = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+          const c = orig.call(this, type, ...rest);
+          if (c && /webgl/i.test(type)) window.__glContexts++;
+          return c;
+        };
+      });
+
       await page.goto(base + "/", { waitUntil: "load" });
 
       // Preloader never traps the visitor.
@@ -192,6 +203,27 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
       t(`everything visible (${invisible})`, !invisible);
 
       // No horizontal overflow at any width.
+      // Shaders must actually compile and link. This is the assertion that matters
+      // most: a broken shader renders as a plain dark rectangle, which reads as a
+      // deliberate design choice rather than a failure, so nothing else catches it.
+      const gl = await page.evaluate(async () => {
+        const m = await import("/js/gl/program.js");
+        return { errors: m.stats.errors, programs: m.stats.programs, live: m.stats.contexts, asked: window.__glContexts || 0 };
+      });
+      t("no shader build errors" + (gl.errors.length ? ` (${gl.errors[0]})` : ""), gl.errors.length === 0);
+      t("webgl contexts released" + ` (live ${gl.live}, asked ${gl.asked})`, gl.live <= 4 && gl.asked <= 6);
+      if (motion === "reduce") {
+        t("reduced motion builds no shaders", gl.programs === 0 && gl.live === 0);
+        // The canvas element stays in the DOM under reduced motion; CSS hides it
+        // and no context is ever created for it. Assert what actually matters.
+        t("reduced motion hides the hero canvas", await page.evaluate(() => {
+          const c = document.querySelector("#sea");
+          return !c || getComputedStyle(c).display === "none";
+        }));
+      } else {
+        t("hero shader built", gl.programs >= 1);
+      }
+
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       t(`no h-scroll (was ${overflow}px)`, overflow <= 1);
 

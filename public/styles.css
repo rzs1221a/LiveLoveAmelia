@@ -20,7 +20,9 @@
   --inv-bg:#F3F0EA; --inv-fg:#141C24; --inv-fg-2:rgba(20,28,36,.72); --inv-line:rgba(20,28,36,.14);
   --shadow:0 20px 60px -20px rgba(0,0,0,.6); --drift:#B8AC9A;}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+/* No `scroll-behavior:smooth` here: it fights ScrollTrigger's scrub and pin,
+   and the stutter it causes is near-impossible to attribute. Anchor scrolling
+   is done in motion.js instead. The .log rule below is a separate scroller. */
 html.lenis{height:auto}.lenis.lenis-smooth{scroll-behavior:auto}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 h1,h2,h3,.display{font-family:"Fraunces","Iowan Old Style",Georgia,serif;font-weight:400;line-height:1.02;letter-spacing:-.015em;text-wrap:balance;margin:0}
@@ -170,7 +172,7 @@ nav .right{display:flex;gap:10px;align-items:center}
 @media (max-width:900px){.port{width:82vw;height:440px}}
 
 /* LISTINGS */
-.list .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.list .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;perspective:1000px}
 .card{background:var(--card);border:1px solid var(--card-line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:transform .45s var(--ease),box-shadow .45s;transform-style:preserve-3d}
 .card:hover{box-shadow:var(--shadow)}
 .card .ph{aspect-ratio:4/3;position:relative;overflow:hidden;background:var(--marsh-3)}

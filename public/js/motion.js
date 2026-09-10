@@ -4,21 +4,47 @@ import { $, $$, reduce, hasGsap, reveal } from './core.js';
 /* ---------- Nav ---------- */
 (function () {
   const nav = $('#nav'); const hero = $('.hero'); if (!nav || !hero) return;
-  let last = 0;
-  function inView(el) { const r = el.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; }
-  function upd() {
-    const y = scrollY; const past = y > hero.offsetHeight - 80;
-    nav.classList.toggle('solid', y > 40);
-    nav.classList.toggle('hide', y > last && y > 300 && past);
-    last = y;
-    const conc = $('#concierge'), fab = $('#fab');
-    if (fab && conc) fab.classList.toggle('show', y > 700 && !inView(conc));
+  const fab = $('#fab'), conc = $('#concierge');
+  let last = 0, heroH = 0, concTop = 0, concBot = 0, queued = false;
+
+  /* Measure once per layout change rather than twice per scroll event. The
+   * old handler read offsetHeight and a bounding rect on every scroll, then
+   * wrote classes — a forced synchronous layout on every frame of a scroll. */
+  function measure() {
+    heroH = hero.offsetHeight;
+    if (conc) { const r = conc.getBoundingClientRect(); concTop = r.top + scrollY; concBot = concTop + r.height; }
   }
-  addEventListener('scroll', upd, { passive: true }); upd();
-  const drawer = $('#drawer');
-  $('#burger').onclick = () => drawer.classList.add('open');
-  $('#drawerX').onclick = () => drawer.classList.remove('open');
-  $$('#drawer a').forEach(a => a.onclick = () => drawer.classList.remove('open'));
+  function upd() {
+    queued = false;
+    const y = scrollY;
+    nav.classList.toggle('solid', y > 40);
+    nav.classList.toggle('hide', y > last && y > 300 && y > heroH - 80);
+    last = y;
+    if (fab && conc) fab.classList.toggle('show', y > 700 && !(concTop < y + innerHeight && concBot > y));
+  }
+  addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(upd); } }, { passive: true });
+  addEventListener('resize', measure, { passive: true });
+  if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.addEventListener('refresh', measure);
+  (document.fonts?.ready || Promise.resolve()).then(measure).catch(() => {});
+  measure(); upd();
+
+  /* Anchor smoothing, since `scroll-behavior:smooth` had to come off <html>. */
+  document.addEventListener('click', e => {
+    const a = e.target.closest?.('a[href^="#"]');
+    if (!a) return;
+    const id = a.getAttribute('href');
+    if (!id || id === '#') return;
+    const target = document.querySelector(id);
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    history.pushState(null, '', id);
+  });
+
+  const drawer = $('#drawer'), burger = $('#burger'), drawerX = $('#drawerX');
+  if (drawer && burger) burger.onclick = () => drawer.classList.add('open');
+  if (drawer && drawerX) drawerX.onclick = () => drawer.classList.remove('open');
+  if (drawer) $$('#drawer a').forEach(a => a.onclick = () => drawer.classList.remove('open'));
 })();
 
 /* ---------- Split text, counters, reveals ---------- */

@@ -1,7 +1,10 @@
 /* Love. Live. Amelia. — core helpers (Seamark) */
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-export const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+export const motionMQ = matchMedia('(prefers-reduced-motion: reduce)');
+/* Kept a boolean because every existing consumer reads it as one; `motionMQ`
+ * is there for anything that needs to react to a mid-session change. */
+export const reduce = motionMQ.matches;
 export const fine = matchMedia('(pointer:fine) and (hover:hover)');
 export const hasGsap = typeof gsap !== 'undefined';
 if (hasGsap && typeof ScrollTrigger !== 'undefined') gsap.registerPlugin(ScrollTrigger);
@@ -37,7 +40,13 @@ const io = new IntersectionObserver(es => es.forEach(e => {
 export function reveal(els) {
   const list = els || $$('.rv.pre');
   list.forEach(e => { if (e.getBoundingClientRect().top < innerHeight) e.classList.remove('pre'); else io.observe(e); });
-  setTimeout(() => list.forEach(e => e.classList.remove('pre')), 3000);
+  /* Safety net, deliberately scoped: clearing every `.pre` on the page after
+   * three seconds would fire each reveal invisibly long before the visitor
+   * scrolls to it, which is what used to happen. Rescue only what is close
+   * enough to be at risk and leave the rest to the observer. */
+  setTimeout(() => list.forEach(e => {
+    if (e.getBoundingClientRect().top < innerHeight * 1.5) e.classList.remove('pre');
+  }), 3000);
 }
 
 /* Shared button-group picker used by the match quiz and the seller stepper. */
@@ -52,10 +61,15 @@ export function optsGroup(root, picks, onPick) {
 }
 
 /* Animate a number into an element; instant when motion is off. */
+const counters = new WeakMap();
 export function countTo(el, value, format = fmt) {
-  if (!hasGsap || reduce) { el.textContent = format(value); return; }
-  const o = { v: parseFloat(String(el.dataset.v || 0)) || 0 };
-  gsap.killTweensOf(o);
-  gsap.to(o, { v: value, duration: .6, ease: 'power3.out', onUpdate: () => { el.textContent = format(o.v); el.dataset.v = o.v; } });
-  el.dataset.v = value;
+  if (!hasGsap || reduce) { el.textContent = format(value); counters.set(el, { v: value }); return; }
+  /* The previous tween has to be killed by reference. Killing tweens of a
+   * freshly-made object kills nothing, which left the affordability slider
+   * spawning one tween per input event, all writing the same node — visible
+   * as flickering digits that settled on the wrong number. */
+  let s = counters.get(el);
+  if (!s) counters.set(el, s = { v: 0, tween: null });
+  s.tween?.kill();
+  s.tween = gsap.to(s, { v: value, duration: .6, ease: 'power3.out', onUpdate: () => { el.textContent = format(s.v); } });
 }

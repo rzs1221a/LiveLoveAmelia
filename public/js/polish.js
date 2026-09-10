@@ -1,5 +1,6 @@
 /* The last ten percent: cursor, magnetic buttons, the signature, and an ocean you can switch on. */
 import { $, $$, reduce, hasGsap, fine } from './core.js';
+import * as ticker from './gl/ticker.js';
 
 /* ---------- Custom cursor + magnetic buttons (desktop pointers only) ---------- */
 (function () {
@@ -22,30 +23,47 @@ import { $, $$, reduce, hasGsap, fine } from './core.js';
   document.addEventListener('mouseleave', () => document.body.classList.remove('cur-on'));
   document.addEventListener('mouseenter', () => { if (shown) document.body.classList.add('cur-on'); });
 
-  (function loop() {
-    requestAnimationFrame(loop);
-    dx += (tx - dx) * .6; dy += (ty - dy) * .6;
-    rx += (tx - rx) * .15; ry += (ty - ry) * .15;
+  /* On the shared ticker, and asleep when the pointer is parked — this used
+   * to write two transforms every frame for the life of the page. */
+  let idle = 0;
+  function follow(_now, dt) {
+    const k = dt / 16.67;
+    const ndx = dx + (tx - dx) * Math.min(1, .6 * k), ndy = dy + (ty - dy) * Math.min(1, .6 * k);
+    const nrx = rx + (tx - rx) * Math.min(1, .15 * k), nry = ry + (ty - ry) * Math.min(1, .15 * k);
+    if (Math.abs(nrx - rx) < .01 && Math.abs(nry - ry) < .01 && Math.abs(ndx - dx) < .01 && Math.abs(ndy - dy) < .01) {
+      if (++idle > 4) { ticker.remove(follow); return; }
+    } else idle = 0;
+    dx = ndx; dy = ndy; rx = nrx; ry = nry;
     dot.style.transform = `translate3d(${dx}px,${dy}px,0)`;
     ring.style.transform = `translate3d(${rx}px,${ry}px,0)`;
-  })();
+  }
+  const wake = () => { idle = 0; ticker.add(follow); };
+  addEventListener('pointermove', e => { if (e.pointerType === 'mouse') wake(); }, { passive: true });
+  wake();
 
-  /* Magnetic pull on primary buttons. */
-  $$('.btn').forEach(btn => {
-    let raf = 0;
-    const move = e => {
-      const r = btn.getBoundingClientRect();
-      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      const mx = e.clientX - cx, my = e.clientY - cy;
-      const inside = Math.abs(mx) < r.width * .7 + 24 && Math.abs(my) < r.height * .7 + 24;
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        btn.style.transform = inside ? `translate(${mx * .25}px, ${my * .25}px)` : '';
-      });
-    };
-    btn.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') move(e); }, { passive: true });
-    btn.addEventListener('pointerleave', () => { cancelAnimationFrame(raf); btn.style.transform = ''; });
-  });
+  /* Magnetic pull, delegated.
+   *
+   * Binding per-button at load looked fine and was quietly broken: four
+   * modules rebuild their `innerHTML`, so the map and compare buttons lost
+   * their pull on the first interaction and the match and seller buttons —
+   * created only after the visitor acts — never had it at all. One delegated
+   * handler covers every `.btn` that will ever exist, and removes six
+   * listeners on the way. */
+  let magnet = null, mraf = 0;
+  addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
+    const btn = e.target.closest?.('.btn');
+    if (btn !== magnet) {
+      if (magnet) { magnet.style.transform = ''; }
+      magnet = btn;
+    }
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const mx = e.clientX - (r.left + r.width / 2), my = e.clientY - (r.top + r.height / 2);
+    cancelAnimationFrame(mraf);
+    mraf = requestAnimationFrame(() => { btn.style.transform = `translate(${mx * .25}px, ${my * .25}px)`; });
+  }, { passive: true });
+  addEventListener('pointerdown', () => { if (magnet) { magnet.style.transform = ''; magnet = null; } }, { passive: true });
 })();
 
 /* ---------- Signature draw-on ---------- */
