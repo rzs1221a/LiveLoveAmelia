@@ -6,7 +6,8 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, extname, join } from "node:path";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..", "public");
@@ -45,6 +46,25 @@ Photography first, then a launch weekend with private showings.
 
 Kelly will bring the comparable sales — reach her at 512-578-9942.`;
 
+/* GSAP normally comes from cdnjs, which the page can't reach inside a test.
+   Cache it once so the animated paths get real coverage; if the network is
+   unavailable, the run still proceeds against the no-GSAP fallback. */
+const vendor = resolve(out, "vendor");
+mkdirSync(vendor, { recursive: true });
+let gsapReady = true;
+for (const f of ["gsap.min.js", "ScrollTrigger.min.js"]) {
+  const dest = resolve(vendor, f);
+  if (existsSync(dest)) continue;
+  try {
+    const r = await fetch(`https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/${f}`);
+    if (!r.ok) throw new Error(String(r.status));
+    await writeFile(dest, await r.text());
+  } catch (e) {
+    console.warn(`could not cache ${f} (${e.message}) — testing the no-GSAP fallback instead`);
+    gsapReady = false;
+  }
+}
+
 const failures = [];
 const browser = await chromium.launch();
 
@@ -66,10 +86,12 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
       const posts = [];
       // GSAP and Google Fonts are unreachable in the sandbox; serve GSAP from a local copy
       // so the animated code paths get real coverage, and let fonts fail harmlessly.
+      if (gsapReady) {
       await page.route("**/cdnjs.cloudflare.com/**/gsap.min.js", async (r) =>
         r.fulfill({ contentType: "text/javascript", body: await readFile(resolve(here, ".out/vendor/gsap.min.js"), "utf8") }));
       await page.route("**/cdnjs.cloudflare.com/**/ScrollTrigger.min.js", async (r) =>
         r.fulfill({ contentType: "text/javascript", body: await readFile(resolve(here, ".out/vendor/ScrollTrigger.min.js"), "utf8") }));
+      }
       await page.route("**/fonts.googleapis.com/**", (r) => r.fulfill({ contentType: "text/css", body: "" }));
       await page.route("**/api/concierge", (r) => r.fulfill({ status: 200, contentType: "text/plain; charset=utf-8", body: CHAT }));
       await page.route("**/api/story", (r) => r.fulfill({ status: 200, contentType: "text/plain; charset=utf-8", body: STORY }));
@@ -86,7 +108,7 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
       // Preloader never traps the visitor.
       await page.waitForFunction(() => !document.querySelector("#loader"), null, { timeout: 3000 }).catch(() => {});
       t("loader gone", await page.locator("#loader").count() === 0);
-      t("gsap available", await page.evaluate(() => typeof window.gsap !== "undefined"));
+      if (gsapReady) t("gsap available", await page.evaluate(() => typeof window.gsap !== "undefined"));
 
       // Concierge: two questions, then the handoff card.
       for (const q of ["What is the Historic District like?", "And the Plantation?"]) {
