@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300&family=Figtree:wght@400;500;600&display=swap">
+<style>
+*{box-sizing:border-box;margin:0}
+body{width:1200px;height:630px;background:#101E2B;color:#F3F0EA;font-family:Figtree,system-ui,sans-serif;display:flex;align-items:center;overflow:hidden;position:relative}
+.waves{position:absolute;inset:0;opacity:.22}
+.copy{padding:0 0 0 84px;width:700px;position:relative;z-index:2}
+.eyebrow{font-size:15px;letter-spacing:.2em;text-transform:uppercase;color:rgba(243,240,234,.62);font-weight:600}
+h1{font-family:Fraunces,Georgia,serif;font-weight:300;font-size:96px;line-height:.96;letter-spacing:-.02em;margin:26px 0 0}
+h1 em{font-style:normal;color:#9CC2BD}
+p{margin-top:26px;font-size:23px;line-height:1.45;color:rgba(243,240,234,.8);max-width:22ch;font-weight:400}
+.who{margin-top:34px;display:flex;align-items:center;gap:14px;font-size:16px;letter-spacing:.06em;color:rgba(243,240,234,.72)}
+.who i{display:block;width:34px;height:1px;background:#9CC2BD}
+.portrait{position:absolute;right:0;top:0;bottom:0;width:430px;z-index:1}
+.portrait img{width:100%;height:100%;object-fit:cover;object-position:center 22%}
+.portrait::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#101E2B 0%,rgba(16,30,43,.35) 42%,rgba(16,30,43,.15) 100%)}
+</style></head>
+<body>
+<svg class="waves" viewBox="0 0 1200 630" preserveAspectRatio="none" fill="none" stroke="#9CC2BD" stroke-width="1.2">
+  <path d="M0 470 C160 440 300 512 460 484 S760 432 920 468 S1120 500 1200 476"/>
+  <path d="M0 520 C170 492 320 560 480 534 S780 484 940 518 S1130 548 1200 526"/>
+  <path d="M0 572 C180 546 330 608 500 584 S800 536 960 568 S1140 596 1200 576"/>
+  <path d="M0 418 C150 392 290 456 450 432 S750 384 910 416 S1110 444 1200 424"/>
+</svg>
+<div class="portrait"><img src="../public/kelly.jpg" alt=""></div>
+<div class="copy">
+  <span class="eyebrow">Amelia Island · Fernandina Beach</span>
+  <h1>Love. Live.<br><em>Amelia.</em></h1>
+  <p>Luxury coastal real estate, and an island concierge that answers at any hour.</p>
+  <div class="who"><i></i> Kelly Voges · BHHS Heymann Williams Realty</div>
+</div>
+</body></html>
