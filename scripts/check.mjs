@@ -206,12 +206,36 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
       // Shaders must actually compile and link. This is the assertion that matters
       // most: a broken shader renders as a plain dark rectangle, which reads as a
       // deliberate design choice rather than a failure, so nothing else catches it.
+      // The overlay layer mounts asynchronously; wait for it rather than guessing.
+      if (motion !== "reduce" && vp.width > 700) {
+        await page.waitForFunction(() => !!document.querySelector("#fx-overlay"), null, { timeout: 8000 }).catch(() => {});
+        const at = await page.evaluate(async () => {
+          const s = await import("/js/gl/sched.js");
+          const seams = [...document.querySelectorAll(".seam")];
+          // A seam either has two genuinely different neighbours, or it has
+          // stood down. Sections that declare no background compute to
+          // transparent black, which rendered as a hard black bar until the
+          // lookup learned to walk up the tree.
+          const bad = seams.filter(el => {
+            const opaque = n => { for (let x = n; x; x = x.parentElement) { const c = getComputedStyle(x).backgroundColor; if (c && !/, ?0\)$/.test(c) && c !== "transparent") return c; } return null; };
+            const a = opaque(document.querySelector(el.dataset.above)), b = opaque(document.querySelector(el.dataset.below));
+            if (!a || !b) return true;
+            return a === b ? el.dataset.seam !== "flat" : el.dataset.seam !== "active";
+          }).length;
+          return { count: seams.length, bad, sched: s.debug() };
+        });
+        t("six seams present", at.count === 6);
+        t("seams classify their neighbours correctly", at.bad === 0);
+        t("seam views registered", at.sched.views >= 6);
+        t("overlay mounted", await page.locator("#fx-overlay").count() === 1);
+      }
+
       const gl = await page.evaluate(async () => {
         const m = await import("/js/gl/program.js");
         return { errors: m.stats.errors, programs: m.stats.programs, live: m.stats.contexts, asked: window.__glContexts || 0 };
       });
       t("no shader build errors" + (gl.errors.length ? ` (${gl.errors[0]})` : ""), gl.errors.length === 0);
-      t("webgl contexts released" + ` (live ${gl.live}, asked ${gl.asked})`, gl.live <= 4 && gl.asked <= 6);
+      t("webgl contexts within budget" + ` (live ${gl.live}, asked ${gl.asked})`, gl.live <= 4 && gl.asked <= 6);
       if (motion === "reduce") {
         t("reduced motion builds no shaders", gl.programs === 0 && gl.live === 0);
         // The canvas element stays in the DOM under reduced motion; CSS hides it

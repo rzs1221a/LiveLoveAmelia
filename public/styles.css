@@ -519,3 +519,13 @@ body.cur-on .cur-dot,body.cur-on .cur-ring{opacity:1}
 [hidden]{display:none!important}
 .af-note{font-size:13.5px;color:var(--fg-2);line-height:1.6;margin-top:22px;padding-top:18px;border-top:1px solid var(--line);max-width:44ch}
 .af-note b{color:var(--fg);font-weight:600}
+
+/* ══════════════════════ THE ATMOSPHERE ROUND ══════════════════════ */
+
+/* SEAMS — a shoreline where two sections meet, instead of a hard colour step.
+   Pure layout anchors: the pixels come from the shared overlay canvas, which
+   is fixed and so is never clipped by the `overflow:hidden` on the dark
+   sections. The negative margins are exactly half the height each, so six
+   seams add nothing to the page's total length. */
+.seam{--seam-h:clamp(48px,7vw,100px);height:var(--seam-h);margin-block:calc(var(--seam-h) / -2);pointer-events:none}
+@media (max-width:700px){.seam{display:none}}
