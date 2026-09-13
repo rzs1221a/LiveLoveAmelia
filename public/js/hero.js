@@ -222,7 +222,9 @@ import * as tier from './gl/tier.js';
   const tl = gsap.timeline({ paused: true });
   tl.to(lines, { y: 0, duration: 1.1, stagger: .12, ease: 'power4.out' }, 0.1)
     .from('.hero .eyebrow, .hero .sub, .hero .cta', { opacity: 0, y: 18, duration: .8, stagger: .1, ease: 'power3.out' }, '-=.7')
-    .from('#portrait', { opacity: 0, y: 40, duration: 1.2, ease: 'power3.out' }, '-=.9');
+    .from('#concierge', { opacity: 0, y: 40, duration: 1.2, ease: 'power3.out' }, '-=.9');
   loaderDone.then(() => tl.play());
-  gsap.to('#portrait', { yPercent: 12, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+  /* The chat panel is the product; it drifts a little slower than the page
+   * so the eye stays on it while the hero scrolls away. */
+  gsap.to('#concierge', { yPercent: 8, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
 })();

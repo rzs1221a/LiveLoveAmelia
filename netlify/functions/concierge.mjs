@@ -1,8 +1,8 @@
 // POST /api/concierge  { messages: [{role, content}, ...], mode?, session? }
 // Streams plain text back (text/plain; chunked). Client appends deltas.
 import Anthropic from "@anthropic-ai/sdk";
-import { BRIEF, RELOCATE } from "../../src/brief.mjs";
-import { limited, cleanSession, saveTranscript, streamAnthropic, demoLocked } from "../../src/lib.mjs";
+import { RELOCATE } from "../../src/brief.mjs";
+import { limited, cleanSession, saveTranscript, streamAnthropic, demoLocked, brainFor } from "../../src/lib.mjs";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5";
 const MAX_TURNS = 16;
@@ -27,6 +27,7 @@ export default async (req, context) => {
 
   const mode = body?.mode === "relocate" ? "relocate" : "chat";
   const session = cleanSession(body?.session);
+  const BRIEF = await brainFor(req, body);
   const system = mode === "relocate" ? BRIEF + "\n\n" + RELOCATE : BRIEF;
   const client = new Anthropic();
   const stream = client.messages.stream({

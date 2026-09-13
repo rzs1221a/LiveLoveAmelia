@@ -1,5 +1,6 @@
 /* Concierge chat, ⌘K palette, FAB. Everything else hooks in through the lla:* events. */
-import { $, $$, reduce, sessionId, emit, demoHeaders } from './core.js';
+import { $, $$, reduce, sessionId, emit, demoHeaders, track, splitChips } from './core.js';
+export { splitChips };
 
 export const turns = [];
 let ctl = null, busy = false, replies = 0;
@@ -9,12 +10,6 @@ export function add(cls, text) { const d = document.createElement('div'); d.clas
 function setBusy(b) { busy = b; chatEl.classList.toggle('busy', b); sendBtn.disabled = b; input.disabled = b; }
 function offline() { status.innerHTML = '<i style="background:#B8AC9A"></i>Offline'; }
 
-export function splitChips(text) {
-  const i = text.lastIndexOf('§§');
-  if (i < 0) return { body: text, chips: [] };
-  let chips = []; try { chips = JSON.parse(text.slice(i + 2).trim()); } catch { chips = []; }
-  return { body: text.slice(0, i).trimEnd(), chips: Array.isArray(chips) ? chips.slice(0, 3).map(String) : [] };
-}
 function renderChips(chips) {
   $$('.chips', log).forEach(c => c.remove());
   if (!chips.length) return;
@@ -32,7 +27,7 @@ export async function ask(q) {
   q = (q || '').trim(); if (!q || busy) return;
   emit('lla:ask', { q });
   $$('.chips', log).forEach(c => c.remove());
-  add('u', q); turns.push({ role: 'user', content: q });
+  add('u', q); turns.push({ role: 'user', content: q }); track('ask', { q });
   if (turns.length > 16) turns.splice(0, turns.length - 16);
   const bubble = add('k think', 'Thinking'); setBusy(true); ctl = new AbortController();
   let text = '';

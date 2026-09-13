@@ -1,8 +1,8 @@
 // POST /api/match  { saturday, type, budget, timeline }
 // Returns JSON { area, tagline, why, runnerUp, runnerUpWhy }
 import Anthropic from "@anthropic-ai/sdk";
-import { BRIEF, AREAS } from "../../src/brief.mjs";
-import { demoLocked } from "../../src/lib.mjs";
+import { AREAS } from "../../src/brief.mjs";
+import { demoLocked, brainFor } from "../../src/lib.mjs";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5";
 const clean = (v) => String(v ?? "").slice(0, 60);
@@ -18,7 +18,7 @@ export default async (req) => {
   const prompt = `A website visitor answered a 4-question quiz. Ideal Saturday: "${p.saturday}". Buying: "${p.type}". Budget: "${p.budget}". Timeline: "${p.timeline}". Choose the single best-fit area from: ${AREAS.join(", ")}. Be realistic about budget (e.g. under $500K rarely buys on the island itself; steer to Yulee or a condo). Reply with ONLY a JSON object, no prose: {"area": string, "tagline": string (max 8 words), "why": string (2-3 sentences, second person, warm, specific, no protected-class language), "runnerUp": string, "runnerUpWhy": string (1 sentence)}`;
 
   const client = new Anthropic();
-  const res = await client.messages.create({ model: MODEL, max_tokens: 400, system: BRIEF, messages: [{ role: "user", content: prompt }] });
+  const res = await client.messages.create({ model: MODEL, max_tokens: 400, system: await brainFor(req, b), messages: [{ role: "user", content: prompt }] });
   const text = res.content.map((c) => c.text || "").join("");
   const m = text.match(/\{[\s\S]*\}/);
   try {

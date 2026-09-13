@@ -81,3 +81,31 @@ try {
   if (k) { localStorage.setItem('lla:demo', k); history.replaceState(null, '', location.pathname); }
 } catch {}
 export const demoHeaders = () => { const k = store.get('lla:demo'); return k ? { 'x-demo': k } : {}; };
+
+/* First-party events for the owner page. Beacon-shaped: never awaited,
+ * never allowed to fail anything. */
+export function track(ev, data = {}) {
+  try {
+    const body = JSON.stringify({ ev, session: sessionId(), path: location.pathname, ...data });
+    if (navigator.sendBeacon) navigator.sendBeacon('/api/track', new Blob([body], { type: 'application/json' }));
+    else fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+  } catch {}
+}
+/* Mirror a captured lead into the owner's inbox. Forms still emails Kelly. */
+export async function sendLead(lead) {
+  try {
+    const r = await fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json', ...demoHeaders() },
+      body: JSON.stringify({ ...lead, session: sessionId(), page: location.href }) });
+    return r.ok;
+  } catch { return false; }
+}
+if (!location.pathname.startsWith('/kelly') && !location.pathname.startsWith('/brain')) track('view');
+
+/* Split a reply from its trailing §§ follow-up chips. Pure, so the owner
+ * pages can import it without dragging the live chat's DOM along. */
+export function splitChips(text) {
+  const i = text.lastIndexOf('§§');
+  if (i < 0) return { body: text, chips: [] };
+  let chips = []; try { chips = JSON.parse(text.slice(i + 2).trim()); } catch { chips = []; }
+  return { body: text.slice(0, i).trimEnd(), chips: Array.isArray(chips) ? chips.slice(0, 3).map(String) : [] };
+}

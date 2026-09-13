@@ -1,5 +1,5 @@
 /* Turning a conversation into a lead Kelly actually receives. */
-import { $, $$, sessionId, store } from './core.js';
+import { $, $$, sessionId, store, sendLead } from './core.js';
 import { transcriptText } from './concierge.js';
 
 /* Netlify Forms over fetch — the matching hidden forms live in index.html. */
@@ -34,9 +34,11 @@ export function showHandoff(force) {
     const contact = $('#hoContact', card).value.trim();
     if (!/@|\d{7,}/.test(contact)) { $('#hoContact', card).focus(); card.classList.add('err'); return; }
     card.classList.remove('err'); btn.disabled = true; btn.textContent = 'Sending…';
-    const ok = await postNetlifyForm('concierge-lead', {
-      name, contact, transcript: transcriptText(6000), session: sessionId(), page: location.href,
-    });
+    const transcript = transcriptText(6000);
+    const [ok] = await Promise.all([
+      postNetlifyForm('concierge-lead', { name, contact, transcript, session: sessionId(), page: location.href }),
+      sendLead({ type: 'handoff', name, contact, summary: transcriptText(240), transcript }),
+    ]);
     card.innerHTML = ok
       ? `<b>Got it — Kelly will reach out.</b><p>Usually the same day. Keep asking in the meantime.</p>`
       : `<b>That didn't send.</b><p>Text Kelly directly and she'll pick it up: <a href="sms:15125789942">512-578-9942</a>.</p>`;

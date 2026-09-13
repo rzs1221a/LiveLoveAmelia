@@ -1,5 +1,5 @@
 /* Neighborhood match quiz + relocation brief. */
-import { $, reduce, hasGsap, esc, fmtBrief, sessionId, optsGroup, demoHeaders } from './core.js';
+import { $, reduce, hasGsap, esc, fmtBrief, sessionId, optsGroup, demoHeaders, track } from './core.js';
 import { lightMap } from './map.js';
 import { turns } from './concierge.js';
 
@@ -15,6 +15,7 @@ const picks = {};
     try {
       const r = await fetch('/api/match', { method: 'POST', headers: { 'Content-Type': 'application/json', ...demoHeaders() }, body: JSON.stringify(picks) });
       if (!r.ok) throw 0; const m = await r.json(); if (m.error) throw 0;
+      track('match', { q: m.area });
       res.innerHTML = `<span class="eyebrow">Your match</span><h3>${esc(m.area)}</h3><p class="why"><em style="color:var(--gold);font-family:Fraunces,serif;font-size:19px">${esc(m.tagline)}</em><br><br>${esc(m.why)}</p><p class="alt">Runner-up: <b>${esc(m.runnerUp)}</b> — ${esc(m.runnerUpWhy)}</p><div class="cta"><button class="btn primary" type="button" data-ask="The neighborhood quiz matched me to ${esc(m.area)} (Saturday: ${esc(picks.saturday)}; buying: ${esc(picks.type)}; budget: ${esc(picks.budget)}; timeline: ${esc(picks.timeline)}). What should my next steps be?">Ask what's next <span class="arr">→</span></button><a class="btn" href="#island">See it on the map</a></div>`;
       if (hasGsap && !reduce) gsap.from(res.children, { opacity: 0, y: 14, duration: .6, stagger: .07, ease: 'power3.out' });
       lightMap(m.area + ' ' + m.runnerUp);
@@ -39,6 +40,7 @@ const picks = {};
       while (true) { const { value, done } = await reader.read(); if (done) break; text += dec.decode(value, { stream: true }); body.innerHTML = fmtBrief(text); }
       if (!text.trim()) throw 0;
       turns.push({ role: 'user', content: q }, { role: 'assistant', content: text.slice(0, 1500) });
+      track('relocate', { q: city });
     } catch { body.textContent = "Couldn't draft the brief right now — Kelly can walk you through it live: 512-578-9942."; }
     finally { btn.disabled = false; }
   });
