@@ -49,20 +49,26 @@ import * as ticker from './gl/ticker.js';
    * created only after the visitor acts — never had it at all. One delegated
    * handler covers every `.btn` that will ever exist, and removes six
    * listeners on the way. */
-  let magnet = null, mraf = 0;
+  let magnet = null, mrect = null, mraf = 0;
   addEventListener('pointermove', e => {
     if (e.pointerType !== 'mouse') return;
     const btn = e.target.closest?.('.btn');
     if (btn !== magnet) {
-      if (magnet) { magnet.style.transform = ''; }
+      if (magnet) magnet.style.transform = '';
       magnet = btn;
+      /* Measured once when the pointer arrives, not on every move. Reading a
+       * rect and writing a transform in the same handler forces a synchronous
+       * layout on each mouse move, which is exactly the cost that made
+       * scrolling and hovering feel heavy. */
+      mrect = btn ? btn.getBoundingClientRect() : null;
     }
-    if (!btn) return;
-    const r = btn.getBoundingClientRect();
-    const mx = e.clientX - (r.left + r.width / 2), my = e.clientY - (r.top + r.height / 2);
+    if (!btn || !mrect) return;
+    const mx = e.clientX - (mrect.left + mrect.width / 2), my = e.clientY - (mrect.top + mrect.height / 2);
     cancelAnimationFrame(mraf);
     mraf = requestAnimationFrame(() => { btn.style.transform = `translate(${mx * .25}px, ${my * .25}px)`; });
   }, { passive: true });
+  /* The cached box is stale the moment the page moves under the pointer. */
+  addEventListener('scroll', () => { if (magnet) { magnet.style.transform = ''; magnet = null; mrect = null; } }, { passive: true });
   addEventListener('pointerdown', () => { if (magnet) { magnet.style.transform = ''; magnet = null; } }, { passive: true });
 })();
 

@@ -79,9 +79,12 @@ export function program(gl, frag, vert = VERT, label = 'shader') {
   stats.programs++;
 
   const cache = new Map();
+  let attrib = -2;
   return {
     handle: pr,
     use() { gl.useProgram(pr); },
+    /* Cached alongside the uniforms; it was being queried on every draw. */
+    quadAttrib() { if (attrib === -2) attrib = gl.getAttribLocation(pr, 'p'); return attrib; },
     /* Uniform locations are looked up once and reused. */
     u(name) {
       if (!cache.has(name)) cache.set(name, gl.getUniformLocation(pr, name));
@@ -105,7 +108,8 @@ export function quad(gl) {
 export function drawQuad(gl, prog) {
   const b = quad(gl);
   gl.bindBuffer(gl.ARRAY_BUFFER, b);
-  const loc = gl.getAttribLocation(prog.handle, 'p');
+  const loc = prog.quadAttrib ? prog.quadAttrib() : gl.getAttribLocation(prog.handle, 'p');
+  if (loc < 0) return;
   gl.enableVertexAttribArray(loc);
   gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

@@ -7,7 +7,7 @@ public/index.html          markup, SEO head, JSON-LD, hidden Netlify forms
 public/styles.css          all styling (design tokens + preloader stay inline in <head>)
 public/js/                 ES modules, entry point js/main.js
 public/js/gl/              the effect layer: ticker, shaders, scheduler, solar math
-public/js/gl/views/        one file per effect (seam, water, scene, caustics, fluid)
+public/js/gl/views/        one file per effect (seam, water, scene)
 public/kelly.jpg           headshot          public/og.png   social card (generated)
 public/sitemap.xml  public/robots.txt
 
@@ -46,16 +46,21 @@ If the tier probe says no, a context fails, or a shader will not compile, the
 site is exactly what it was without any of it.
 
 **Tiers.** 0 is reduced motion, no WebGL, or a device that struggled: nothing
-runs. 1 is the hero, the island water and the seams. 2 adds caustics and the
-fluid. The governor only ever demotes — a device that struggled once will
-struggle again, and promoting back reads as flickering.
+runs. 1 is the hero, the island water and the seams. The governor only ever
+demotes, and it now paces off the real frame interval — measuring
+`performance.now()` around GL calls timed the layout reads beside them, not
+the GPU, so scrolling reliably demoted capable machines. Demotion also stops
+drawing rather than removing canvases; the hero used to vanish mid-session.
 
-**Contexts.** Four at most: the hero, one shared overlay, the island water,
-and the fluid. A context per effect would need about twenty, and browsers
-force-lose the oldest well before that, so the failure would be intermittent
-black rectangles rather than anything diagnosable. The eleven generated
-scenes use no live context at all — one transient context draws them at load
-and is released.
+**Contexts.** The hero, the island water, and one per seam, made on first
+approach so a visitor who never scrolls past the hero pays for none of them.
+Seams originally shared a single fixed full-viewport canvas, which was wrong
+three ways: the shared canvas was cleared every frame while its views drew on
+interleaved phases, so they strobed; being fixed, each had to be re-placed
+from a fresh rect and always lagged the element it was welded to; and a
+full-viewport canvas repainting under the nav's backdrop blur forced a
+whole-page re-composite every frame. A canvas inside the seam scrolls with
+it. The eleven generated scenes use no live context at all.
 
 **The sky is real.** Sun and moon come from the Astronomical Almanac series
 with Bennett refraction, checked against NOAA: sunrise within a minute, the
@@ -64,12 +69,19 @@ comes from the visitor's own timezone rather than the island's, so a visitor
 in London at 3pm sees an afternoon rather than a black midnight hero, while
 declination still comes from the real date and the seasons stay true.
 
+**Budget.** `scripts/.out/attrib.mjs` scrolls the whole page and reports
+long-task time with the hero and the atmosphere each disabled in turn. With
+both off the page produces zero long tasks, so anything it reports is ours.
+Run it before and after touching a shader.
+
 **Tuning needs eyes.** Several problems here were invisible in code and
 obvious in a screenshot: sections that declare no background compute to
 transparent black and painted a hard black bar; the island water at full
-opacity turned elegant line art into mud; the fluid's first tuning read as a
-lava lamp. `scripts/.out/` holds the throwaway screenshot harness used for
-that. Look at changes to any of this before trusting them.
+opacity turned elegant line art into mud; a seam sat over the bottom of
+Kelly's portrait. `scripts/.out/` holds the throwaway screenshot harness.
+`FAKE_HOUR=22 node scripts/.out/shot.mjs hero` checks the night sky — and
+note it *shifts* the clock rather than freezing it, because freezing `Date`
+stalls GSAP and every reading taken that way is meaningless.
 
 ## Run
 ```
