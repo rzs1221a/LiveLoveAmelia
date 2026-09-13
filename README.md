@@ -16,10 +16,33 @@ src/lib.mjs                rate limiter, streaming helper, Blobs transcript logg
 netlify/functions/concierge  POST /api/concierge — streaming chat & relocation brief
 netlify/functions/story      POST /api/story     — streaming listing story (sellers)
 netlify/functions/match      POST /api/match     — neighborhood quiz → JSON
+netlify/functions/lead       POST /api/lead      — mirrors a captured lead into Blobs for the owner page
+netlify/functions/track      POST /api/track     — first-party events (view, ask, story, match, relocate)
+netlify/functions/kelly      GET  /api/kelly     — owner report: leads + stats (owner key)
+netlify/functions/brain      GET/PUT/DELETE /api/brain — the editable prompt (owner key; ?public=1 → venues only)
+public/kelly.html            Kelly's private page: live stats, the lead inbox, the arithmetic, a 60-second demo
+public/brain.html            the concierge's brain, editable in plain forms, with a live "try it"
 
 scripts/og.mjs             regenerates public/og.png with Playwright
 scripts/check.mjs          Playwright smoke test across viewports, themes and motion settings
 ```
+
+### Owner pages and the two keys
+
+Two keys, both constants until launch, both in `src/lib.mjs`:
+
+| Key | Unlocks | Where it goes at launch |
+|---|---|---|
+| `DEMO_KEY` | the paid endpoints, for a demo browser (`/?demo=<key>`, sticks in localStorage) | deleted, with `demoLocked` and its call sites |
+| `OWNER_KEY` | `/kelly.html?key=…`, `/brain.html?key=…`, `/api/kelly`, `/api/brain` | `process.env.OWNER_KEY` in Netlify → Site configuration → Environment variables; the code already prefers it |
+
+Kelly's link does both: opening `/kelly.html?key=<OWNER_KEY>` also unlocks the demo for that browser.
+
+**How a lead reaches her.** The handoff card and the seller flow post to Netlify Forms (`concierge-lead`, `valuation`) *and* to `/api/lead`. Forms is the email; Blobs is what `/kelly.html` reads. Email notifications are dashboard-only: Netlify → Site configuration → Forms → Form notifications → Add notification → Email, one per form, to her address. Do that before the call where you want a lead to land on her phone.
+
+**The brain.** `src/brief.mjs` is now fields plus `compose()`. Defaults ship in code; an override saved from `/brain.html` lives in the `brain` Blobs store (`current.json`, history under `history/`) and is read with a one-minute cache. `compose(DEFAULTS)` equals the prompt that used to be one string, byte for byte. Two fields are locked (Fair Housing, no invented numbers) and always come from code. Venues she writes there replace the drafted island book on the site.
+
+**Launch-day checklist**, one commit: remove `DEMO_KEY`/`demoLocked` and the `x-demo` client headers; move `OWNER_KEY` to an env var; drop `X-Robots-Tag` from `netlify.toml`; restore `public/robots.txt`; set the fee constant in `public/js/kelly.js` if a monthly figure is agreed.
 
 ### The modules
 

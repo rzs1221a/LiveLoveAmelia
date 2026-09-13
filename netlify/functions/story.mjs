@@ -2,8 +2,8 @@
 // Streams a "Listing Story" — how Kelly would position and launch this specific home.
 // Contact details are never sent to the model; they travel with the Netlify form submission.
 import Anthropic from "@anthropic-ai/sdk";
-import { BRIEF, STORY } from "../../src/brief.mjs";
-import { limited, cleanSession, saveTranscript, streamAnthropic, demoLocked } from "../../src/lib.mjs";
+import { STORY } from "../../src/brief.mjs";
+import { limited, cleanSession, saveTranscript, streamAnthropic, demoLocked, brainFor } from "../../src/lib.mjs";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5";
 const str = (v, n = 60) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
@@ -52,7 +52,7 @@ export default async (req, context) => {
   const stream = client.messages.stream({
     model: MODEL,
     max_tokens: 900,
-    system: BRIEF + "\n\n" + STORY,
+    system: (await brainFor(req, b)) + "\n\n" + STORY,
     messages,
   });
 

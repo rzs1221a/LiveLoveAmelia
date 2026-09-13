@@ -1,5 +1,5 @@
 /* Seller flow: three quick steps, then the concierge drafts a Listing Story and Kelly gets the lead. */
-import { $, $$, reduce, hasGsap, fmtBrief, sessionId, optsGroup, demoHeaders } from './core.js';
+import { $, $$, reduce, hasGsap, fmtBrief, sessionId, optsGroup, demoHeaders, track, sendLead } from './core.js';
 import { postNetlifyForm } from './leads.js';
 import { turns } from './concierge.js';
 
@@ -74,7 +74,11 @@ const AREA_OPTIONS = [
       body.textContent = "Kelly will do this one in person — she has your details and will bring the comparable sales with her. Want it sooner? 512-578-9942.";
     } finally {
       /* The lead goes to Kelly whether or not the story drafted. */
-      const ok = await postNetlifyForm('valuation', { ...v, story: text.slice(0, 6000), session: sessionId(), page: location.href });
+      track('story', { q: `${v.type || ''} ${v.area || ''}`.trim() });
+      const [ok] = await Promise.all([
+        postNetlifyForm('valuation', { ...v, story: text.slice(0, 6000), session: sessionId(), page: location.href }),
+        sendLead({ type: 'valuation', name: v.name, contact: v.email || v.phone, summary: `${v.type} · ${v.area} · ${v.beds || '?'}bd/${v.baths || '?'}ba`, payload: v, transcript: text.slice(0, 4000) }),
+      ]);
       btn.disabled = false;
       btn.innerHTML = ok ? 'Sent to Kelly ✓' : 'Text Kelly: 512-578-9942';
     }

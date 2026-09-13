@@ -121,6 +121,11 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
 
       await page.goto(base + "/", { waitUntil: "load" });
 
+      // The concierge is the product: it has to be in the first screen, and the
+      // page reads sellers → buyers → who Kelly is.
+      t("chat in first viewport", await page.evaluate(() => { const r = document.querySelector("#chat")?.getBoundingClientRect(); return !!r && r.top < innerHeight * 0.9; }));
+      t("section order", (await page.evaluate(() => [...document.querySelectorAll("header[id],section[id]")].map(e => e.id).join(","))).startsWith("top,value,match,afford,compare,meet,island"));
+
       // Preloader never traps the visitor.
       await page.waitForFunction(() => !document.querySelector("#loader"), null, { timeout: 3000 }).catch(() => {});
       t("loader gone", await page.locator("#loader").count() === 0);
@@ -229,9 +234,9 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
           }).length;
           return { count: seams.length, bad, views: s2.debug().views, canvases: document.querySelectorAll(".seam canvas").length };
         });
-        t("five seams present", at.count === 5);
+        t("three seams present", at.count === 3);
         t("seams classify their neighbours correctly", at.bad === 0);
-        t("seam views registered", at.views >= 5);
+        t("seam views registered", at.views >= 3);
         // Each seam owns its canvas; a shared one strobed as views on different
         // phases cleared each other, and lagged its host during a scroll.
         t("seams own their canvases", at.canvases >= 1);
@@ -254,6 +259,26 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
         }));
       } else {
         t("hero shader built", gl.programs >= 1);
+      }
+
+      // Owner pages show nothing without the key and everything with it.
+      if (vp.name === "desktop" && scheme === "light" && motion === "no-preference") {
+        await page.route("**/api/kelly**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ leads: [{ ts: Date.now(), type: "handoff", name: "Dana", contact: "dana@example.com", summary: "Asked about the Plantation", transcript: "user: hi" }], stats: { conversations: 4, asks: 9, leads: 1, stories: 1 } }) }));
+        await page.route("**/api/brain**", (r) => r.request().method() === "GET"
+          ? r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ fields: [{ key: "about", label: "About Kelly", locked: false }, { key: "rules", label: "Rules", locked: true }], defaults: { about: "x", rules: "r" }, current: { about: "About her", rules: "r" } }) })
+          : r.fulfill({ status: 200, contentType: "application/json", body: "{\"ok\":true}" }));
+        await page.goto(base + "/kelly.html", { waitUntil: "load" });
+        t("owner page hidden without key", await page.evaluate(() => getComputedStyle(document.querySelector("#own")).display === "none" || document.querySelector("#own").hidden));
+        await page.goto(base + "/kelly.html?key=test", { waitUntil: "load" });
+        await page.waitForTimeout(900);
+        t("owner page shows leads", (await page.locator(".own-lead").count()) === 1);
+        t("owner stats render", (await page.locator("#stats b").first().innerText()) !== "–");
+        t("fee row hidden by default", await page.locator("#feeRow").isHidden());
+        await page.goto(base + "/brain.html?key=test", { waitUntil: "load" });
+        await page.waitForTimeout(600);
+        t("brain renders fields", (await page.locator("#brainForm textarea").count()) === 2);
+        t("locked field is readonly", await page.locator("#brainForm textarea[name=rules]").evaluate((e) => e.readOnly));
+        await page.goto(base + "/", { waitUntil: "load" });
       }
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
