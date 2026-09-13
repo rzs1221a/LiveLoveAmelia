@@ -2,12 +2,14 @@
 // Returns JSON { area, tagline, why, runnerUp, runnerUpWhy }
 import Anthropic from "@anthropic-ai/sdk";
 import { BRIEF, AREAS } from "../../src/brief.mjs";
+import { demoLocked } from "../../src/lib.mjs";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5";
 const clean = (v) => String(v ?? "").slice(0, 60);
 
 export default async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (demoLocked(req)) return new Response("Preview locked", { status: 403 });
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "not_configured" }, { status: 503 });
   let b; try { b = await req.json(); } catch { return Response.json({ error: "bad_json" }, { status: 400 }); }
   const p = { saturday: clean(b.saturday), type: clean(b.type), budget: clean(b.budget), timeline: clean(b.timeline) };

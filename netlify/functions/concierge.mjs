@@ -2,7 +2,7 @@
 // Streams plain text back (text/plain; chunked). Client appends deltas.
 import Anthropic from "@anthropic-ai/sdk";
 import { BRIEF, RELOCATE } from "../../src/brief.mjs";
-import { limited, cleanSession, saveTranscript, streamAnthropic } from "../../src/lib.mjs";
+import { limited, cleanSession, saveTranscript, streamAnthropic, demoLocked } from "../../src/lib.mjs";
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5";
 const MAX_TURNS = 16;
@@ -10,6 +10,7 @@ const MAX_CHARS = 1500;
 
 export default async (req, context) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (demoLocked(req)) return new Response("Preview locked", { status: 403 });
   if (!process.env.ANTHROPIC_API_KEY) return new Response("Concierge not configured", { status: 503 });
 
   const ip = context.ip || req.headers.get("x-nf-client-connection-ip") || "anon";

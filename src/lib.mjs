@@ -70,3 +70,13 @@ export function streamAnthropic(stream, { onDone } = {}) {
     headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" },
   });
 }
+
+/* PRE-LAUNCH gate. The site is public before its subject has signed, so the
+ * paid endpoints answer only to a browser that has been unlocked by visiting
+ * the page once with ?demo=<key>. This stops strangers spending the API
+ * budget; it is not a secret, since the key ships in the client. Delete
+ * `demoLocked` and its three call sites the day she signs. */
+export const DEMO_KEY = "amelia-preview-2026";
+export function demoLocked(req) {
+  return req.headers.get("x-demo") !== DEMO_KEY;
+}

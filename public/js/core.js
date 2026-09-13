@@ -73,3 +73,11 @@ export function countTo(el, value, format = fmt) {
   s.tween?.kill();
   s.tween = gsap.to(s, { v: value, duration: .6, ease: 'power3.out', onUpdate: () => { el.textContent = format(s.v); } });
 }
+
+/* PRE-LAUNCH: unlock the paid endpoints for a demo browser. Visit the page
+ * once with ?demo=amelia-preview-2026 and it sticks. Remove with the gate. */
+try {
+  const k = new URLSearchParams(location.search).get('demo');
+  if (k) { localStorage.setItem('lla:demo', k); history.replaceState(null, '', location.pathname); }
+} catch {}
+export const demoHeaders = () => { const k = store.get('lla:demo'); return k ? { 'x-demo': k } : {}; };
