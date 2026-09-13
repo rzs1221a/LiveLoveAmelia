@@ -1,5 +1,5 @@
 /* Concierge chat, ⌘K palette, FAB. Everything else hooks in through the lla:* events. */
-import { $, $$, reduce, sessionId, emit } from './core.js';
+import { $, $$, reduce, sessionId, emit, demoHeaders } from './core.js';
 
 export const turns = [];
 let ctl = null, busy = false, replies = 0;
@@ -37,7 +37,7 @@ export async function ask(q) {
   const bubble = add('k think', 'Thinking'); setBusy(true); ctl = new AbortController();
   let text = '';
   try {
-    const r = await fetch('/api/concierge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: turns, session: sessionId() }), signal: ctl.signal });
+    const r = await fetch('/api/concierge', { method: 'POST', headers: { 'Content-Type': 'application/json', ...demoHeaders() }, body: JSON.stringify({ messages: turns, session: sessionId() }), signal: ctl.signal });
     if (r.status === 429) throw { code: 'rate' }; if (r.status === 503) throw { code: 'off' }; if (!r.ok) throw { code: 'up' };
     const reader = r.body.getReader(), dec = new TextDecoder();
     while (true) { const { value, done } = await reader.read(); if (done) break; text += dec.decode(value, { stream: true }); bubble.classList.remove('think'); bubble.textContent = splitChips(text).body; log.scrollTop = log.scrollHeight; }

@@ -1,5 +1,3 @@
+# PRE-LAUNCH: restore "Allow: /" and the sitemap line the day Kelly signs.
 User-agent: *
-Allow: /
-Disallow: /thanks.html
-
-Sitemap: https://loveliveamelia.com/sitemap.xml
+Disallow: /

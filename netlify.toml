@@ -18,3 +18,6 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    # PRE-LAUNCH: the site carries a real person's name and number before
+    # she has agreed to it. Remove this line the day she signs.
+    X-Robots-Tag = "noindex, nofollow"

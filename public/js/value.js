@@ -1,5 +1,5 @@
 /* Seller flow: three quick steps, then the concierge drafts a Listing Story and Kelly gets the lead. */
-import { $, $$, reduce, hasGsap, fmtBrief, sessionId, optsGroup } from './core.js';
+import { $, $$, reduce, hasGsap, fmtBrief, sessionId, optsGroup, demoHeaders } from './core.js';
 import { postNetlifyForm } from './leads.js';
 import { turns } from './concierge.js';
 
@@ -61,7 +61,7 @@ const AREA_OPTIONS = [
 
     let text = '';
     try {
-      const r = await fetch('/api/story', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...v, session: sessionId() }) });
+      const r = await fetch('/api/story', { method: 'POST', headers: { 'Content-Type': 'application/json', ...demoHeaders() }, body: JSON.stringify({ ...v, session: sessionId() }) });
       if (!r.ok) throw 0;
       const reader = r.body.getReader(), dec = new TextDecoder();
       while (true) { const { value, done } = await reader.read(); if (done) break; text += dec.decode(value, { stream: true }); body.innerHTML = fmtBrief(text); }
