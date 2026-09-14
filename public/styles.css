@@ -58,6 +58,7 @@ nav .right{display:flex;gap:10px;align-items:center}
 .burger{display:none;width:44px;height:44px;border:1px solid currentColor;border-radius:50%;background:transparent;color:inherit;cursor:pointer;place-items:center}
 .burger i{display:block;width:16px;height:1.5px;background:currentColor;box-shadow:0 -5px 0 currentColor,0 5px 0 currentColor}
 @media (max-width:980px){nav ul,.kbd kbd{display:none}.burger{display:grid}.kbd{padding:9px 14px}}
+@media (max-width:600px){nav .right .kbd{display:none}}
 .drawer{position:fixed;inset:0;z-index:1500;background:var(--marsh);color:var(--sand);display:grid;place-items:center;transform:translateY(-100%);transition:transform .6s var(--ease)}
 .drawer.open{transform:none}
 .drawer ul{list-style:none;padding:0;margin:0;display:grid;gap:14px;text-align:center;font-family:"Fraunces",serif;font-size:clamp(34px,8vw,56px);font-weight:300}
@@ -66,6 +67,7 @@ nav .right{display:flex;gap:10px;align-items:center}
 
 /* HERO */
 .hero{min-height:100svh;background:var(--marsh);color:var(--sand);position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:flex-end}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 .hero .sea{position:absolute;inset:0;z-index:0;background:radial-gradient(120% 55% at 50% 100%,rgba(94,143,139,.38),transparent 62%),radial-gradient(60% 40% at 78% 8%,rgba(156,194,189,.14),transparent 70%),linear-gradient(180deg,#0B161F 0%,#101E2B 40%,#1B3145 68%,#173B36 100%)}
 .hero .veil{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(11,22,31,.45) 0%,rgba(11,22,31,.1) 40%,rgba(11,22,31,.6) 100%)}
 .hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1.02fr .98fr;gap:56px;align-items:center;padding:118px 0 72px}
@@ -329,7 +331,7 @@ footer .eho{display:flex;gap:10px;align-items:center;font-family:"Figtree",syste
 
 .rv{opacity:1;transform:none}
 @media (prefers-reduced-motion:no-preference){.rv{transition:opacity .9s var(--ease),transform .9s var(--ease)}.rv.pre{opacity:.001;transform:translateY(24px)}}
-@media (prefers-reduced-motion:reduce){.map .spot .ring,.conc .powered .dot{animation:none}.hero h1 .l span,.split .w span{transform:none!important}}
+@media (prefers-reduced-motion:reduce){.hero canvas{display:none!important}.map .spot .ring,.conc .powered .dot{animation:none}.hero h1 .l span,.split .w span{transform:none!important}}
 
 /* CHAT: MIC, TOOLS, HANDOFF */
 .chat .mic{flex:none;width:46px;border:1px solid rgba(20,28,36,.14);background:var(--ivory);color:var(--marsh);border-radius:8px;cursor:pointer;display:grid;place-items:center;transition:.2s}
@@ -431,26 +433,23 @@ body.owner{background:var(--bg)}
 .brain-answer{margin-top:20px;white-space:pre-wrap;max-width:70ch;color:var(--fg-2);line-height:1.6}
 @media (max-width:900px){.own-stats{grid-template-columns:1fr 1fr}.own-two{grid-template-columns:1fr}.own-lead summary{grid-template-columns:1fr 1fr}}
 
-/* ══════════════════ THE WELCOME SCREEN ══════════════════ */
-/* One question, once, on the first visit. Shown by a class the head script
-   sets before paint, so it never flashes the page underneath. */
-.welcome{display:none;position:fixed;inset:0;z-index:2500;background:var(--marsh);color:var(--sand);overflow:auto;padding:24px}
-html.onboard .welcome{display:grid;place-items:center}
-html.onboard{overflow:hidden}
-.welcome .box{width:min(880px,100%);padding:6vh 0}
-.welcome .eyebrow{color:rgba(243,240,234,.7)}
-.welcome h2{font-size:clamp(36px,5.2vw,68px);font-weight:300;color:var(--sand);margin-top:16px}
-.welcome h2 em{font-style:italic;color:var(--gold-2)}
-.welcome .lede{margin-top:14px;color:rgba(243,240,234,.78);max-width:52ch;font-size:17px}
-.welcome .opts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:36px}
-.welcome .opts button{text-align:left;background:rgba(243,240,234,.05);border:1px solid rgba(243,240,234,.16);color:var(--sand);padding:20px 22px;border-radius:12px;cursor:pointer;transition:.25s var(--ease);display:grid;gap:6px}
-.welcome .opts button:hover,.welcome .opts button:focus-visible{background:rgba(243,240,234,.12);transform:translateY(-2px);border-color:rgba(243,240,234,.4)}
-.welcome .opts b{font-family:"Fraunces",serif;font-weight:400;font-size:24px;line-height:1.1}
-.welcome .opts span{font-size:14px;color:rgba(243,240,234,.7);line-height:1.45}
-.welcome .skip{margin-top:28px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;font-size:13.5px;color:rgba(243,240,234,.7)}
-.welcome .skip a{color:var(--sand)}
-.welcome .who{display:flex;align-items:center;gap:12px}
-.welcome .who .av{width:36px;height:36px;border-radius:50%;background:url('/kelly.jpg') center/cover;flex:none}
-.welcome.out{transition:opacity .5s var(--ease);opacity:0;pointer-events:none}
-@media (prefers-reduced-motion:reduce){.welcome .opts button{transition:none}}
-@media (max-width:640px){.welcome{padding:20px}.welcome .opts{grid-template-columns:1fr;gap:8px;margin-top:24px}.welcome .box{padding:2vh 0}.welcome .opts button{padding:13px 16px;gap:3px}.welcome .opts b{font-size:20px}.welcome .opts span{font-size:13px}.welcome h2{font-size:clamp(30px,9vw,40px)}.welcome .lede{font-size:15px}.welcome .skip{margin-top:20px}}
+/* ══════════════════ THE TOUR ══════════════════ */
+/* Kelly's walk through her own site. The ring is fixed and its shadow is
+   the dimming, so the page underneath stays live to tap and type in. */
+.tour{display:none}
+html.touring .tour{display:block}
+.tour-dim{position:fixed;inset:0;z-index:2400;background:rgba(11,22,31,.72)}
+.tour-ring{position:fixed;z-index:2400;border-radius:16px;border:1px solid rgba(156,194,189,.6);box-shadow:0 0 0 200vmax rgba(11,22,31,.62);pointer-events:none;transition:top .5s var(--ease),left .5s var(--ease),width .5s var(--ease),height .5s var(--ease)}
+.tour-ring.moving{transition:none}
+.tour-card{position:fixed;z-index:2500;left:50%;bottom:24px;transform:translateX(-50%);width:min(520px,calc(100% - 32px));background:var(--sand);color:var(--ink);border-radius:14px;padding:22px 24px 20px;box-shadow:0 40px 80px -30px rgba(0,0,0,.7)}
+.tour.centered .tour-card{bottom:auto;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 32px));padding:34px 32px 28px}
+.tour-card .eyebrow{color:var(--gold)}
+.tour-card h3{font-size:24px;margin-top:8px;font-weight:400}
+.tour.centered .tour-card h3{font-size:clamp(30px,4vw,40px);font-weight:300}
+.tour-card p{margin-top:10px;color:var(--ink-2);font-size:15.5px;line-height:1.55}
+.tour-nav{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap}
+.tour-nav .btn{padding:11px 16px;font-size:14px}
+.tour-skip{margin-left:auto;background:transparent;border:0;color:var(--ink-2);font-size:13px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 0}
+@media (prefers-reduced-motion:reduce){.tour-ring{transition:none}}
+@media (min-width:901px){.tour:not(.centered) .tour-card{left:auto;right:28px;transform:none}.tour:not(.centered).side-left .tour-card{right:auto;left:28px}}
+@media (max-width:640px){.tour-card{bottom:12px;padding:16px 18px 14px}.tour-card h3{font-size:20px}.tour-card p{font-size:14.5px}.tour.centered .tour-card{padding:26px 22px 22px}}

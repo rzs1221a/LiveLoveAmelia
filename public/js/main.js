@@ -9,8 +9,7 @@ const load = m => import(m).catch(e => {
   console.error(`[lla] ${m} failed to load; the rest of the page continues`, e);
 });
 
-/* First: the welcome screen and the hero (which pull in core), then the nav. */
-await load('./onboard.js');
+/* First: the hero (which pulls in core), then the nav. */
 await load('./hero.js');
 await load('./motion.js');
 
@@ -22,4 +21,5 @@ await Promise.allSettled([
   './leads.js',
   './match.js',
   './value.js',
+  './tour.js',
 ].map(load));

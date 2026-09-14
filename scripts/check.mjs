@@ -1,6 +1,6 @@
 // Playwright smoke test. Serves public/ statically, mocks the AI endpoints and the
-// Netlify Forms POST, then drives the welcome screen, the concierge, the seller
-// flow and the owner pages across viewports, themes and motion settings.
+// Netlify Forms POST, then drives the tour, the hero ocean, the concierge, the
+// seller flow and the owner pages across viewports, themes and motion settings.
 // Run: npm run check   (screenshots land in scripts/.out)
 import { chromium } from "playwright";
 import { createServer } from "node:http";
@@ -104,7 +104,7 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
 
       const t = (name, cond) => { if (!cond) failures.push(`${label}: ${name}`); };
 
-      // The effect layer is gone; nothing on the page may ask for a WebGL context.
+      // Count every WebGL context the page asks for: the hero ocean is the only one.
       await page.addInitScript(() => {
         window.__glContexts = 0;
         const orig = HTMLCanvasElement.prototype.getContext;
@@ -117,20 +117,25 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
 
       await page.goto(base + "/", { waitUntil: "load" });
 
-      // First visit: the welcome screen is up, before anything else, and the page
-      // underneath cannot scroll. Choosing an answer tunes the concierge, lands the
-      // visitor on the matching section, and is remembered.
-      t("welcome shown on first visit", await page.evaluate(() => document.documentElement.classList.contains("onboard") && getComputedStyle(document.querySelector("#welcome")).display !== "none"));
-      t("welcome has four choices and a skip", (await page.locator("#welcome button[data-mode]").count()) === 4 && (await page.locator("#welcomeSkip").count()) === 1);
-      const defaultHello = await page.locator("#log .msg.k").first().innerText();
-      await page.click('#welcome button[data-mode="selling"]');
-      await page.waitForFunction(() => !document.querySelector("#welcome"), null, { timeout: 3000 }).catch(() => {});
-      t("welcome dismissed", (await page.locator("#welcome").count()) === 0 && !(await page.evaluate(() => document.documentElement.classList.contains("onboard"))));
-      t("choice remembered", (await page.evaluate(() => localStorage.getItem("lla:onboard"))) === "selling");
-      await page.waitForTimeout(motion === "reduce" ? 100 : 900);
-      t("selling lands on the seller section", await page.evaluate(() => { const r = document.querySelector("#value").getBoundingClientRect(); return r.top > -innerHeight * 0.5 && r.top < innerHeight * 0.5; }));
-      t("concierge greeting tuned", (await page.locator("#log .msg.k").first().innerText()) !== defaultHello && (await page.locator("#log .msg.k").first().innerText()).includes("selling"));
-      t("starters tuned", (await page.locator("#starters button").count()) === 4 && (await page.locator("#starters button").first().innerText()).includes("30 days"));
+      // First visit: the tour opens on its welcome stop, centered, over a dimmed
+      // page. Next walks the stops; each rings its target and scrolls to it.
+      await page.waitForFunction(() => window.__tour, null, { timeout: 5000 }).catch(() => {});
+      t("tour opens on first visit", await page.evaluate(() => document.documentElement.classList.contains("touring") && getComputedStyle(document.querySelector("#tour")).display !== "none"));
+      t("tour starts centered", await page.evaluate(() => document.querySelector("#tour").classList.contains("centered") && document.querySelector("#tourBack").hidden));
+      t("tour counts fourteen stops", (await page.locator("#tourStep").innerText()) === "1 / 14");
+      await page.click("#tourNext");
+      await page.waitForTimeout(motion === "reduce" ? 150 : 900);
+      t("second stop rings the hero", await page.evaluate(() => { const r = document.querySelector(".tour-ring"); if (r.hidden) return false; const b = r.getBoundingClientRect(), h = document.querySelector(".hero .wrap > div").getBoundingClientRect(); return Math.abs(b.top - h.top) < 40 && b.width > h.width - 4; }));
+      for (let k = 0; k < 3; k++) { await page.click("#tourNext"); await page.waitForTimeout(motion === "reduce" ? 120 : 850); }
+      t("map stop lights Crane Island", await page.evaluate(() => document.querySelector('.map .spot[data-id="crane"]').classList.contains("hot") && document.querySelector("#place h3")?.textContent.includes("Crane")));
+      t("map stop scrolls the map into view", await page.evaluate(() => { const r = document.querySelector("#map").getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; }));
+      await page.click("#tourBack");
+      await page.waitForTimeout(200);
+      t("back works", (await page.locator("#tourStep").innerText()) === "4 / 14");
+      await page.click("#tourSkip");
+      await page.waitForFunction(() => !document.querySelector("#tour"), null, { timeout: 3000 }).catch(() => {});
+      t("skip closes the tour", (await page.locator("#tour").count()) === 0 && !(await page.evaluate(() => document.documentElement.classList.contains("touring"))));
+      t("tour remembered", (await page.evaluate(() => localStorage.getItem("lla:toured"))) === "1");
 
       // The page reads: who Kelly is, the island, the homes, then the tools.
       t("section order", (await page.evaluate(() => [...document.querySelectorAll("header[id],section[id]")].map(e => e.id).join(","))) === "top,meet,island,communities,listings,concierge,match,relocate,value,process,reviews,contact");
@@ -138,7 +143,7 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
       await page.waitForTimeout(motion === "reduce" ? 100 : 1400);
       t("portrait in the hero", await page.evaluate(() => { const r = document.querySelector("#portrait img")?.getBoundingClientRect(); return !!r && r.width > 100 && r.top < innerHeight; }));
       t("hero headline visible", await page.evaluate(() => [...document.querySelectorAll(".hero h1 .l span")].every(s => { const m = new DOMMatrixReadOnly(getComputedStyle(s).transform); return Math.abs(m.f) < 2; })));
-      t("nothing left of the effect layer", (await page.locator("canvas, .seam, #loader, .grain, #pal, #soundBtn").count()) === 0);
+      t("nothing left of the atmosphere", (await page.locator("canvas:not(#sea), .seam, #loader, .grain, #pal, #soundBtn").count()) === 0);
       if (gsapReady) t("gsap available", await page.evaluate(() => typeof window.gsap !== "undefined"));
 
       // Concierge: two questions, then the handoff card.
@@ -192,33 +197,43 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
         }).filter(Boolean).join(", "));
       t(`everything visible (${invisible})`, !invisible);
 
-      t("no webgl contexts", (await page.evaluate(() => window.__glContexts || 0)) === 0);
+      // The hero ocean: one context, one program, and it must actually build. A
+      // shader that fails to compile renders as a flat dark rectangle that reads
+      // as a design choice, so nothing else catches it.
+      const gl = await page.evaluate(async () => {
+        const m = await import("/js/gl/program.js");
+        return { errors: m.stats.errors, programs: m.stats.programs, live: m.stats.contexts, asked: window.__glContexts || 0 };
+      });
+      t("no shader build errors" + (gl.errors.length ? ` (${gl.errors[0]})` : ""), gl.errors.length === 0);
+      // Two asks: the tier probe's throwaway and the hero's own.
+      t(`one live webgl context (live ${gl.live}, asked ${gl.asked})`, gl.live <= 1 && gl.asked <= 2);
+      if (motion === "reduce") {
+        t("reduced motion builds no shaders", gl.programs === 0 && gl.live === 0);
+        t("reduced motion hides the hero canvas", await page.evaluate(() => { const c = document.querySelector("#sea"); return !c || getComputedStyle(c).display === "none"; }));
+      } else {
+        t("hero shader built", gl.programs >= 1);
+        // Daytime, whatever the clock says, and actually drawing.
+        const hero = await page.evaluate(async () => (await import("/js/hero.js")).debug());
+        t(`hero sky is daylight and live (alt ${hero.sunAlt}, frames ${hero.frames})`, hero.sunAlt >= 10 && hero.frames > 0);
+      }
 
-      // Second visit: no welcome screen. `?welcome` brings it back for a demo,
-      // and Skip and Escape both let the visitor through.
+      // Second visit: no tour. `?tour` replays it, Escape closes it, and a
+      // module that never arrives must not leave the page dimmed.
       await page.goto(base + "/", { waitUntil: "load" });
-      t("welcome not shown twice", (await page.locator("#welcome").count()) === 0 && !(await page.evaluate(() => document.documentElement.classList.contains("onboard"))));
-      t("returning visitor keeps the tuned concierge", (await page.locator("#starters button").first().innerText()).includes("30 days"));
-      await page.goto(base + "/?welcome", { waitUntil: "load" });
-      await page.waitForFunction(() => window.__onboard, null, { timeout: 5000 }).catch(() => {});
-      t("?welcome forces the screen", await page.evaluate(() => document.documentElement.classList.contains("onboard")));
-      await page.click("#welcomeSkip");
-      await page.waitForFunction(() => !document.querySelector("#welcome"), null, { timeout: 3000 }).catch(() => {});
-      t("skip dismisses", (await page.locator("#welcome").count()) === 0);
-      t("skip is remembered as browsing", (await page.evaluate(() => localStorage.getItem("lla:onboard"))) === "browsing");
-      await page.goto(base + "/?welcome", { waitUntil: "load" });
-      await page.waitForFunction(() => window.__onboard, null, { timeout: 5000 }).catch(() => {});
+      await page.waitForFunction(() => window.__tour, null, { timeout: 5000 }).catch(() => {});
+      t("tour not shown twice", (await page.locator("#tour").count()) === 0 && !(await page.evaluate(() => document.documentElement.classList.contains("touring"))));
+      await page.goto(base + "/?tour", { waitUntil: "load" });
+      await page.waitForFunction(() => window.__tour, null, { timeout: 5000 }).catch(() => {});
+      t("?tour replays the tour", await page.evaluate(() => document.documentElement.classList.contains("touring") && !!document.querySelector("#tour")));
       await page.keyboard.press("Escape");
-      await page.waitForFunction(() => !document.querySelector("#welcome"), null, { timeout: 3000 }).catch(() => {});
-      t("escape dismisses", (await page.locator("#welcome").count()) === 0);
-      // A module that never arrives must not lock the page: the head script lifts
-      // the screen on its own after a few seconds.
+      await page.waitForFunction(() => !document.querySelector("#tour"), null, { timeout: 3000 }).catch(() => {});
+      t("escape closes the tour", (await page.locator("#tour").count()) === 0);
       const errsBefore = errs.length;
-      await page.route("**/js/onboard.js", (r) => r.abort());
-      await page.goto(base + "/?welcome", { waitUntil: "load" });
-      await page.waitForFunction(() => !document.documentElement.classList.contains("onboard"), null, { timeout: 7000 }).catch(() => {});
-      t("welcome lifts by itself if its script fails", !(await page.evaluate(() => document.documentElement.classList.contains("onboard"))));
-      await page.unroute("**/js/onboard.js");
+      await page.route("**/js/tour.js", (r) => r.abort());
+      await page.goto(base + "/?tour", { waitUntil: "load" });
+      await page.waitForFunction(() => !document.documentElement.classList.contains("touring"), null, { timeout: 7000 }).catch(() => {});
+      t("tour lifts by itself if its script fails", !(await page.evaluate(() => document.documentElement.classList.contains("touring"))));
+      await page.unroute("**/js/tour.js");
       errs.splice(errsBefore); // the aborted module is the point of that test, not a defect
       await page.goto(base + "/", { waitUntil: "load" });
 

@@ -3,9 +3,10 @@
 Static site + three Netlify Functions. No build step: Netlify publishes `public/` as-is. Seamark build.
 
 ```
-public/index.html          markup, SEO head, JSON-LD, hidden Netlify forms, the welcome screen
+public/index.html          markup, SEO head, JSON-LD, hidden Netlify forms, the tour
 public/styles.css          all styling (design tokens stay inline in <head>)
 public/js/                 ES modules, entry point js/main.js
+public/js/gl/              the hero ocean's helpers: ticker, shader program, noise, sky camera, tier probe
 public/kelly.jpg           headshot          public/og.png   social card (generated)
 public/sitemap.xml  public/robots.txt
 
@@ -40,7 +41,7 @@ Kelly's link does both: opening `/kelly.html?key=<OWNER_KEY>` also unlocks the d
 
 **The brain.** `src/brief.mjs` is now fields plus `compose()`. Defaults ship in code; an override saved from `/brain.html` lives in the `brain` Blobs store (`current.json`, history under `history/`) and is read with a one-minute cache. `compose(DEFAULTS)` equals the prompt that used to be one string, byte for byte. Two fields are locked (Fair Housing, no invented numbers) and always come from code.
 
-**Launch-day checklist**, one commit: remove `DEMO_KEY`/`demoLocked` and the `x-demo` client headers; move `OWNER_KEY` to an env var; drop `X-Robots-Tag` from `netlify.toml`; restore `public/robots.txt`; set the fee constant in `public/js/kelly.js` if a monthly figure is agreed.
+**Launch-day checklist**, one commit: remove `DEMO_KEY`/`demoLocked` and the `x-demo` client headers; move `OWNER_KEY` to an env var; drop `X-Robots-Tag` from `netlify.toml`; restore `public/robots.txt`; set the fee constant in `public/js/kelly.js` if a monthly figure is agreed; make the tour open only from `/?tour`.
 
 ### The modules
 
@@ -48,28 +49,43 @@ Kelly's link does both: opening `/kelly.html?key=<OWNER_KEY>` also unlocks the d
 |---|---|
 | `core.js` | selectors, motion/pointer flags, escaping, session id, reveal-on-scroll, shared button groups |
 | `data.js` | neighborhoods, listings |
-| `onboard.js` | the welcome screen: one question on the first visit, remembered in localStorage |
-| `hero.js` | intro timeline and the portrait parallax; the sea behind it is a CSS gradient |
+| `tour.js` | Kelly's tour of her own site: fourteen stops, opens once, `/?tour` replays it |
+| `hero.js` | the WebGL ocean under a fixed morning sky, the intro timeline, the portrait parallax |
+| `gl/ticker.js` `gl/tier.js` | the page's single frame loop; the capability probe that turns the ocean off on weak hardware |
 | `motion.js` `map.js` `listings.js` | nav, split text, counters, pinned reel, testimonials, island map, listing cards |
 | `concierge.js` | chat and the FAB. Emits `lla:ask` / `lla:reply` / `lla:stop`; everything else hooks in there |
 | `voice.js` `leads.js` | mic + read-aloud; in-chat handoff card, sharing, `postNetlifyForm()` |
 | `match.js` `value.js` | quiz, relocation brief, seller stepper |
 
-### The welcome screen
+### The tour
 
-The first visit opens on one question: buying, selling, relocating, or just
-looking. The answer scrolls the visitor to the matching section, swaps the
-concierge's opening line and its four starter questions, and is stored in
-localStorage under `lla:onboard`, so the screen shows once. `/?welcome`
-brings it back for a demo. The head script that shows it also lifts it after
-five seconds if `onboard.js` never arrives, so a failed module cannot lock
-the page. Escape and the skip link both count as "just looking".
+The first visit opens on a tour for Kelly: fourteen stops, each one scrolling
+to a part of the page, ringing it, and saying in a few lines what it does for
+her. The ring is a fixed element whose shadow dims everything else, so the
+page underneath stays live; she can tap the map or ask the concierge mid-tour.
+Escape, Skip and Done all mark it seen (`lla:toured` in localStorage), and
+`/?tour` replays it; her owner page links to that. The head script that opens
+it also closes it after five seconds if `tour.js` never arrives, so a failed
+module cannot leave the page dimmed.
+
+**PRE-LAUNCH:** it opens on the first visit for everyone, because everyone who
+can see the page right now is Kelly or Seamark. At launch, drop the
+localStorage clause from the head script so it opens only from `/?tour`.
+
+### The ocean
+
+The hero is the one WebGL surface left: the same shader as before, now under
+a fixed morning sky (sun a little south of east, sixteen degrees up) instead
+of the real one. The real sky put a black rectangle at the top of the page for
+every visitor at their own local midnight. One context, half frame rate, 1x
+pixels; the tier probe turns it off on weak hardware and reduced motion hides
+the canvas entirely, leaving the CSS gradient behind it.
 
 ### What came out
 
-The WebGL sky, seams, island water, generated scenes, the custom cursor, the
-film grain, the tide curtain, the ocean sound, the ⌘K palette, and the
-affordability, compare and island-book sections. The page under all of it is
+The real-time sky, the seams, the island water, the generated scenes, the
+custom cursor, the film grain, the tide curtain, the ocean sound, the ⌘K
+palette, and the affordability, compare and island-book sections. The page under all of it is
 what ships now. `git log` has every one of them if any is wanted back.
 
 ## Run
@@ -115,7 +131,7 @@ No IP is stored — just a salted 12-character hash (set `IP_SALT` to rotate it)
 - **Relocation brief** → `/api/concierge` with `mode: "relocate"`.
 - **Listing story** (sellers) → `/api/story`. The lead is sent whether or not the story drafts, so a backend outage never costs Kelly a seller.
 
-Everything degrades: no GSAP (CDN blocked) → static reveals and an instant welcome dismiss; reduced motion → no intro, no parallax; no speech APIs → those buttons remove themselves; backend down → the chat says so and points at Kelly's phone.
+Everything degrades: no GSAP (CDN blocked) → static reveals; no WebGL → the CSS sea; reduced motion → no ocean, no intro, no parallax; no speech APIs → those buttons remove themselves; backend down → the chat says so and points at Kelly's phone.
 
 ## Cost
 Haiku, ~700 output tokens/turn: roughly $0.002–0.005 per concierge turn; a listing story is ~900 tokens. 1,000 conversations/mo ≈ $10–25. Per-IP limiter is 20 req/min per function instance (10 for `/api/story`); move to Upstash if it gets hammered.
