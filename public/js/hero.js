@@ -29,6 +29,7 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
   const frag = NOISE + `
   uniform vec2 r; uniform float t; uniform vec2 m;
   uniform vec3 uSun;    /* screen x, screen y, in-frame falloff */
+  uniform vec3 uSunDir; /* world direction, camera looking down +z */
   uniform float uSunAlt;
   uniform vec4 uMoon;   /* screen x, screen y, in-frame, illuminated fraction */
   uniform float uMoonAlt;
@@ -79,11 +80,25 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
     return smoothstep(0.34, 0.0, length(f)) * tw * (0.4 + 0.6 * fract(id * 71.3));
   }
 
+  /* The sea surface: three trains of swell running in toward the viewer
+   * (camera looks down +z, so the pattern moves toward -z), the longest
+   * one bent along x so its lines are not ruler-straight, plus chop from
+   * the shared noise. Chop fades with distance; the swell stays. */
+  float waves(vec2 p, float far){
+    float h = 0.0;
+    h += 0.85 * sin(dot(p, vec2(0.015, 0.095)) + t * 0.50 + sin(p.x * 0.04 + t * 0.18) * 0.8);
+    h += 0.38 * sin(dot(p, vec2(-0.07, 0.15)) + t * 0.75);
+    h += 0.16 * sin(dot(p, vec2(0.16, 0.09)) + t * 1.05);
+    h += 0.26 * (fbm3(p * 0.30 + vec2(0.0, t * 0.40)) - 0.5) * 2.0 * (1.0 - far * 0.8);
+    h += 0.07 * (fbm3(p * 1.20 + vec2(t * 0.15, t * 0.8)) - 0.5) * 2.0 * (1.0 - far);
+    return h;
+  }
+
   void main(){
     vec2 uv = gl_FragCoord.xy / r;
     vec2 q = uv; q.x *= r.x / r.y;
     float aspect = r.x / r.y;
-    float hor = 0.60 + 0.015 * sin(t * 0.05);
+    float hor = 0.60;
     float a = uSunAlt;
     /* A floor under the night. The true altitude at 10pm is around -45, where
      * every twilight term collapses to its base and the whole hero renders at
@@ -124,37 +139,48 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
         col += vec3(0.55,0.62,0.72) * exp(-pow(length(md) * 7.0, 2.0)) * 0.16 * uMoon.z * night;
       }
     } else {
-      float d = (hor - uv.y) / hor;
-      float persp = 1.0 / (d * 6.0 + 0.06);
-      /* The field flows toward the viewer (minus t), the way swell comes in
-       * to a beach. It used to flow the other way, which read as the whole
-       * sea creeping up the screen. */
-      vec2 w = vec2(q.x * persp * 1.4 + m.x * 0.15, persp * 2.2 - t * 0.30);
-      /* Long rolling swell lines, bent a little along x so they are not
-       * ruler-straight, under the noise that gives them texture. */
-      float swell = 0.5 + 0.5 * sin(w.y * 2.4 + sin(w.x * 0.6 + t * 0.35) * 0.9 - t * 0.5);
-      float wv = fbm(w * 1.3) * 0.50 + fbm3(w * 3.1 - t * 0.08) * 0.22 + swell * 0.38;
-      /* Detail fades toward the horizon, where the perspective frequency
-       * would otherwise shimmer at every frame. */
-      float det = smoothstep(0.0, 0.22, d);
-      float crest = smoothstep(0.58, 0.86, wv) * det;
-      col = mix(seaDeep(pa), seaNear(pa), d * 0.75 + wv * 0.55);
+      /* The water is a lit surface, not a texture. Each pixel below the
+       * horizon is a ray from an eye 2.5 units up, intersected with the sea
+       * plane; the height field there gives a normal, and the normal gives
+       * a reflection of the sky above, a Fresnel edge, and a sun glint. */
+      vec2 ndc = vec2((uv.x - 0.5) * 2.0 * aspect, (uv.y - hor) * 2.0);
+      vec3 rd = normalize(vec3(ndc.x * 0.53, ndc.y * 0.53, 1.0));
+      vec3 eye = vec3(m.x * 0.6, 2.5, 0.0);
+      float dist = eye.y / -rd.y;
+      vec3 p = eye + rd * dist;
+      /* Sample spacing grows with distance so the far water does not alias. */
+      float e = 0.03 + dist * 0.015;
+      float far = smoothstep(20.0, 160.0, dist);
+      float hgt = waves(p.xz, far);
+      float hx = waves(p.xz + vec2(e, 0.0), far);
+      float hz = waves(p.xz + vec2(0.0, e), far);
+      vec3 n = normalize(vec3(hgt - hx, e * 1.35, hgt - hz));
 
-      /* A glint path only exists when something is up there to cast it. */
-      float sunUp = smoothstep(-2.0, 4.0, a) * uSun.z;
-      if (sunUp > 0.001) {
-        float g = exp(-pow(abs(q.x - uSun.x * aspect) * (2.5 + d * 9.0), 2.0)) * (1.0 - d) * (0.5 + wv);
-        col += mix(vec3(1.0,0.78,0.52), vec3(0.90,0.94,0.94), smoothstep(0.0,12.0,pa)) * g * 0.55 * pow(1.0 - d, 1.5) * sunUp;
-      }
-      float moonUp = smoothstep(-1.0, 6.0, uMoonAlt) * uMoon.z * night * uMoon.w;
-      if (moonUp > 0.001) {
-        float g = exp(-pow(abs(q.x - uMoon.x * aspect) * (3.5 + d * 11.0), 2.0)) * (1.0 - d) * (0.45 + wv);
-        col += vec3(0.80,0.86,0.95) * g * 0.30 * pow(1.0 - d, 1.6) * moonUp;
-      }
-      col += vec3(0.86,0.93,0.94) * crest * 0.24 * (1.0 - d * 0.55) * mix(0.35, 1.0, smoothstep(-8.0, 4.0, pa));
-      /* Troughs go darker, so the swell reads as shape rather than as stripes of light. */
-      col *= 1.0 - 0.18 * (1.0 - wv) * det;
-      col = mix(col, hcol * 0.9, pow(1.0 - d, 14.0) * 0.5);
+      vec3 refl = reflect(rd, n);
+      float sunLit = smoothstep(-2.0, 4.0, a);
+      float ndl = clamp(dot(n, uSunDir), 0.0, 1.0);
+      /* What the surface reflects: the same sky the top half is painted with. */
+      vec3 skyR = mix(hcol, zen, pow(clamp(refl.y, 0.0, 1.0), 0.45)) * 0.82;
+      float rs = max(dot(refl, uSunDir), 0.0);
+      float glint = pow(rs, 320.0) * 2.6 + pow(rs, 28.0) * 0.30 + pow(rs, 6.0) * 0.05;
+      float fres = 0.03 + 0.97 * pow(1.0 - max(dot(n, -rd), 0.0), 5.0);
+
+      vec3 deep = seaDeep(pa), shal = seaNear(pa);
+      float lift = clamp(hgt * 0.55 + 0.5, 0.0, 1.0);
+      vec3 water = mix(deep, shal, lift * 0.75) * (0.55 + 0.45 * ndl);
+      /* Light through the back of a crest, when the sun is ahead. */
+      water += shal * 0.55 * pow(max(dot(rd, uSunDir), 0.0), 5.0) * clamp(hgt, 0.0, 1.0) * sunLit;
+
+      col = mix(water, skyR, fres);
+      col += vec3(1.0, 0.95, 0.86) * glint * sunLit * uSun.z;
+
+      /* Foam on the steepest crests, breaking up with its own noise. */
+      float steep = clamp(1.0 - n.y * 1.02, 0.0, 1.0) * 14.0;
+      float foam = smoothstep(0.80, 1.05, hgt * 0.55 + steep * 0.45 + fbm3(p.xz * 0.9 + vec2(0.0, t * 0.5)) * 0.45) * (1.0 - far);
+      col = mix(col, vec3(0.90, 0.94, 0.95) * (0.6 + 0.4 * ndl), foam * 0.6);
+
+      /* Air between here and the horizon. */
+      col = mix(col, hcol * 0.90, 1.0 - exp(-dist * 0.010));
     }
 
     float vig = smoothstep(1.2, 0.35, length(uv - vec2(0.5, 0.45)));
@@ -199,7 +225,12 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
     prog.use(); size(); lost = false; ticker.add(draw);
   });
 
-  const sky = { s: project(SUN_AZ, SUN_ALT), mo: { x: 0, y: 0, inFrame: 0 }, sunAlt: SUN_ALT, moonAlt: -30, illum: 0 };
+  const rad = Math.PI / 180, dAz = (SUN_AZ - CAMERA_YAW) * rad, dAlt = SUN_ALT * rad;
+  const sky = {
+    s: project(SUN_AZ, SUN_ALT), mo: { x: 0, y: 0, inFrame: 0 }, sunAlt: SUN_ALT, moonAlt: -30, illum: 0,
+    /* The same sun as a world direction for the water: x right, y up, z ahead. */
+    dir: [Math.sin(dAz) * Math.cos(dAlt), Math.sin(dAlt), Math.cos(dAz) * Math.cos(dAlt)],
+  };
 
   let heroFrame = 0;
   function draw(now, dt) {
@@ -215,6 +246,7 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
     gl.uniform1f(prog.u('t'), now);
     gl.uniform2f(prog.u('m'), mx, my);
     gl.uniform3f(prog.u('uSun'), sky.s.x, sky.s.y, sky.s.inFrame);
+    gl.uniform3f(prog.u('uSunDir'), sky.dir[0], sky.dir[1], sky.dir[2]);
     gl.uniform1f(prog.u('uSunAlt'), sky.sunAlt);
     gl.uniform4f(prog.u('uMoon'), sky.mo.x, sky.mo.y, sky.mo.inFrame, sky.illum);
     gl.uniform1f(prog.u('uMoonAlt'), sky.moonAlt);
