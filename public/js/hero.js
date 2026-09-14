@@ -10,9 +10,9 @@ import * as tier from './gl/tier.js';
 /* The shader's sun, (0.30, 0.17, -0.94): ahead and to the right, about ten
  * degrees up. Low enough to lay ribbons of light across the water. */
 const SUN_ALT = Math.asin(0.17 / Math.hypot(0.30, 0.17, 0.94)) * 180 / Math.PI;
-let frames = 0;
+let frames = 0, q = null;
 /* For the smoke test: what sky this is, and whether it is actually drawing. */
-export const debug = () => ({ sunAlt: SUN_ALT, frames });
+export const debug = () => ({ sunAlt: SUN_ALT, frames, quality: q });
 
 /* ---------- Sea and sky ---------- */
 (function sea() {
@@ -28,11 +28,13 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
   const frag = `
   uniform vec2 resolution;
   uniform float time;
+  uniform float octaves;    /* wave trains summed: 7 on desktop, 5 on phones */
+  uniform float refines;    /* surface refinement steps: 5 on desktop, 3 on phones */
 
   const vec3 SUN = vec3(0.30, 0.17, -0.94);
 
   // Broad swells plus smaller waves traveling across them.
-  float seaHeight(vec2 p) {
+  float seaHeight(vec2 p, float oct) {
     float height = 0.0;
     float amplitude = 0.19;
     float frequency = 0.38;
@@ -40,6 +42,7 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
     mat2 turn = mat2(0.80, -0.60, 0.60, 0.80);
 
     for (int i = 0; i < 7; i++) {
+      if (float(i) >= oct) break;
       float phase = dot(p, direction) * frequency + time * sqrt(frequency) * 0.80;
       height += amplitude * (sin(phase) + 0.22 * sin(phase * 2.0 + 0.7));
       direction = turn * direction;
@@ -68,20 +71,26 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
     vec3 color = sky(ray);
 
     if (ray.y < -0.001) {
-      // Intersect the water, then refine against the wave surface.
+      // Intersect the water, then refine against the wave surface. The
+      // refinement only needs the broad shape, so it runs two trains short;
+      // far water drops trains too, since they would alias there anyway.
       float distanceToWater = -camera.y / ray.y;
+      float oct = max(octaves - floor(distanceToWater * 0.02), 3.0);
       for (int i = 0; i < 6; i++) {
+        if (float(i) >= refines) break;
         vec3 point = camera + ray * distanceToWater;
-        float target = (seaHeight(point.xz) - camera.y) / ray.y;
+        float target = (seaHeight(point.xz, oct - 2.0) - camera.y) / ray.y;
         distanceToWater = mix(distanceToWater, target, 0.65);
       }
       vec3 point = camera + ray * distanceToWater;
 
-      // Broader sampling at distance prevents noisy horizon shimmer.
+      // Broader sampling at distance prevents noisy horizon shimmer. One
+      // height here, then forward differences: three evaluations, not six.
       float epsilon = 0.035 + distanceToWater * 0.0015;
-      float dx = seaHeight(point.xz + vec2(epsilon, 0.0)) - seaHeight(point.xz - vec2(epsilon, 0.0));
-      float dz = seaHeight(point.xz + vec2(0.0, epsilon)) - seaHeight(point.xz - vec2(0.0, epsilon));
-      vec3 normal = normalize(vec3(-dx, 2.0 * epsilon, -dz));
+      float h0 = seaHeight(point.xz, oct);
+      float dx = seaHeight(point.xz + vec2(epsilon, 0.0), oct) - h0;
+      float dz = seaHeight(point.xz + vec2(0.0, epsilon), oct) - h0;
+      vec3 normal = normalize(vec3(-dx, epsilon, -dz));
       vec3 view = -ray;
       vec3 reflected = reflect(ray, normal);
 
@@ -90,7 +99,7 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
 
       vec3 deepWater = vec3(0.025, 0.19, 0.25);
       vec3 tealWater = vec3(0.07, 0.36, 0.39);
-      float swellLight = smoothstep(-0.25, 0.30, seaHeight(point.xz));
+      float swellLight = smoothstep(-0.25, 0.30, h0);
       vec3 water = mix(deepWater, tealWater, swellLight * 0.55);
       water *= 0.82 + 0.18 * max(dot(normal, normalize(SUN)), 0.0);
 
@@ -102,7 +111,7 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
       color += vec3(1.0, 0.84, 0.60) * specular * 1.7;
 
       // Gentle crest highlights, kept subtle for a calm coastal feel.
-      float crest = smoothstep(0.15, 0.32, seaHeight(point.xz));
+      float crest = smoothstep(0.15, 0.32, h0);
       color += vec3(0.18, 0.34, 0.32) * crest * 0.08 * (1.0 - fresnel);
 
       // Blend distant water into the atmosphere.
@@ -130,11 +139,17 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
 
   let vis = true, lost = false, stopped = false;
 
+  /* Two profiles. A phone gets about half the pixels, three refinement
+   * steps instead of five and five wave trains instead of seven; the
+   * difference is invisible at phone size and the cost is a fifth. */
+  const phone = matchMedia('(pointer: coarse)').matches || innerWidth < 900;
+  q = phone ? { dpr: 1.0, px: 550000, refines: 3, octaves: 5 } : { dpr: 1.5, px: 1200000, refines: 5, octaves: 7 };
+
   let pending = 0;
   function size() {
-    /* Cap the cost independently of screen density: at most 1.5x, at most
-     * 1600 pixels wide, at most 1.2 megapixels. */
-    const dpr = Math.min(devicePixelRatio || 1, 1.5, 1600 / Math.max(c.clientWidth, 1), Math.sqrt(1200000 / Math.max(c.clientWidth * c.clientHeight, 1)));
+    /* Cap the cost independently of screen density: the profile's device
+     * pixel ratio, at most 1600 pixels wide, at most the profile's budget. */
+    const dpr = Math.min(devicePixelRatio || 1, q.dpr, 1600 / Math.max(c.clientWidth, 1), Math.sqrt(q.px / Math.max(c.clientWidth * c.clientHeight, 1)));
     const w = Math.max(1, Math.round(c.clientWidth * dpr)), h = Math.max(1, Math.round(c.clientHeight * dpr));
     if (c.width === w && c.height === h) return;      /* mobile URL-bar resize fires constantly */
     c.width = w; c.height = h; gl.viewport(0, 0, w, h);
@@ -157,15 +172,30 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
   });
 
 
+  /* If frames run long anyway, shed pixels before shedding the ocean: each
+   * step is a fifth fewer, down to a floor, and it never steps back up, so
+   * the picture settles rather than oscillates. The interval is the honest
+   * signal; it includes everything on the page, which is the point. */
+  let ema = 0, bad = 0;
+  function pace(dt) {
+    const budget = 1000 / ticker.refreshHz() * 1.6;
+    ema = ema ? ema * 0.9 + dt * 0.1 : dt;
+    if (ema > budget) { if (++bad >= 60 && q.px > 260000) { q.px = Math.max(260000, q.px * 0.8); bad = 0; ema = 0; size(); } }
+    else bad = Math.max(0, bad - 2);
+  }
+
   let heroFrame = 0;
   function draw(now, dt) {
     if (!vis || lost || stopped) return;
     /* Every frame on a 60Hz panel; every other frame on 120Hz and up, which
      * is still 60. Halving a 60Hz panel to 30 made the crests stutter. */
     if (ticker.refreshHz() >= 100 && (++heroFrame & 1)) return;
+    pace(dt);
     prog.use();
     gl.uniform2f(prog.u('resolution'), c.width, c.height);
     gl.uniform1f(prog.u('time'), now);
+    gl.uniform1f(prog.u('octaves'), q.octaves);
+    gl.uniform1f(prog.u('refines'), q.refines);
     drawQuad(gl, prog);
     frames++;
   }
