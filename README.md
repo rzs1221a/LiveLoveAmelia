@@ -3,11 +3,9 @@
 Static site + three Netlify Functions. No build step: Netlify publishes `public/` as-is. Seamark build.
 
 ```
-public/index.html          markup, SEO head, JSON-LD, hidden Netlify forms
-public/styles.css          all styling (design tokens + preloader stay inline in <head>)
+public/index.html          markup, SEO head, JSON-LD, hidden Netlify forms, the welcome screen
+public/styles.css          all styling (design tokens stay inline in <head>)
 public/js/                 ES modules, entry point js/main.js
-public/js/gl/              the effect layer: ticker, shaders, scheduler, solar math
-public/js/gl/views/        one file per effect (seam, water, scene)
 public/kelly.jpg           headshot          public/og.png   social card (generated)
 public/sitemap.xml  public/robots.txt
 
@@ -40,7 +38,7 @@ Kelly's link does both: opening `/kelly.html?key=<OWNER_KEY>` also unlocks the d
 
 **How a lead reaches her.** The handoff card and the seller flow post to Netlify Forms (`concierge-lead`, `valuation`) *and* to `/api/lead`. Forms is the email; Blobs is what `/kelly.html` reads. Email notifications are dashboard-only: Netlify → Site configuration → Forms → Form notifications → Add notification → Email, one per form, to her address. Do that before the call where you want a lead to land on her phone.
 
-**The brain.** `src/brief.mjs` is now fields plus `compose()`. Defaults ship in code; an override saved from `/brain.html` lives in the `brain` Blobs store (`current.json`, history under `history/`) and is read with a one-minute cache. `compose(DEFAULTS)` equals the prompt that used to be one string, byte for byte. Two fields are locked (Fair Housing, no invented numbers) and always come from code. Venues she writes there replace the drafted island book on the site.
+**The brain.** `src/brief.mjs` is now fields plus `compose()`. Defaults ship in code; an override saved from `/brain.html` lives in the `brain` Blobs store (`current.json`, history under `history/`) and is read with a one-minute cache. `compose(DEFAULTS)` equals the prompt that used to be one string, byte for byte. Two fields are locked (Fair Housing, no invented numbers) and always come from code.
 
 **Launch-day checklist**, one commit: remove `DEMO_KEY`/`demoLocked` and the `x-demo` client headers; move `OWNER_KEY` to an env var; drop `X-Robots-Tag` from `netlify.toml`; restore `public/robots.txt`; set the fee constant in `public/js/kelly.js` if a monthly figure is agreed.
 
@@ -49,62 +47,30 @@ Kelly's link does both: opening `/kelly.html?key=<OWNER_KEY>` also unlocks the d
 | Module | What it owns |
 |---|---|
 | `core.js` | selectors, motion/pointer flags, escaping, session id, reveal-on-scroll, shared button groups |
-| `data.js` | neighborhoods and their compare scores, listings, price bands, the island book |
-| `preloader.js` `hero.js` | tide curtain (once per session), WebGL sea, intro timeline |
+| `data.js` | neighborhoods, listings |
+| `onboard.js` | the welcome screen: one question on the first visit, remembered in localStorage |
+| `hero.js` | intro timeline and the portrait parallax; the sea behind it is a CSS gradient |
 | `motion.js` `map.js` `listings.js` | nav, split text, counters, pinned reel, testimonials, island map, listing cards |
-| `concierge.js` | chat, ⌘K palette, FAB. Emits `lla:ask` / `lla:reply` / `lla:stop` — everything else hooks in there |
+| `concierge.js` | chat and the FAB. Emits `lla:ask` / `lla:reply` / `lla:stop`; everything else hooks in there |
 | `voice.js` `leads.js` | mic + read-aloud; in-chat handoff card, sharing, `postNetlifyForm()` |
-| `match.js` `value.js` `afford.js` `compare.js` `book.js` | quiz, relocation brief, seller stepper, affordability, compare, island book |
-| `polish.js` | custom cursor, magnetic buttons, signature draw-on, ocean ambience |
-| `atmosphere.js` | mounts the effect layer and every view; the one place to disable all of it |
-| `gl/ticker.js` | the page's single frame loop, wrapping `gsap.ticker` when it is there |
-| `gl/sun.js` | solar and lunar position, computed locally — no API, no key |
-| `gl/tier.js` | capability probe and the frame-cost governor |
-| `gl/layer.js` `gl/sched.js` | shared canvas with scissored views; three-phase scheduler |
+| `match.js` `value.js` | quiz, relocation brief, seller stepper |
 
-### The effect layer
+### The welcome screen
 
-Everything below is decoration sitting on top of a page that already works.
-If the tier probe says no, a context fails, or a shader will not compile, the
-site is exactly what it was without any of it.
+The first visit opens on one question: buying, selling, relocating, or just
+looking. The answer scrolls the visitor to the matching section, swaps the
+concierge's opening line and its four starter questions, and is stored in
+localStorage under `lla:onboard`, so the screen shows once. `/?welcome`
+brings it back for a demo. The head script that shows it also lifts it after
+five seconds if `onboard.js` never arrives, so a failed module cannot lock
+the page. Escape and the skip link both count as "just looking".
 
-**Tiers.** 0 is reduced motion, no WebGL, or a device that struggled: nothing
-runs. 1 is the hero, the island water and the seams. The governor only ever
-demotes, and it now paces off the real frame interval — measuring
-`performance.now()` around GL calls timed the layout reads beside them, not
-the GPU, so scrolling reliably demoted capable machines. Demotion also stops
-drawing rather than removing canvases; the hero used to vanish mid-session.
+### What came out
 
-**Contexts.** The hero, the island water, and one per seam, made on first
-approach so a visitor who never scrolls past the hero pays for none of them.
-Seams originally shared a single fixed full-viewport canvas, which was wrong
-three ways: the shared canvas was cleared every frame while its views drew on
-interleaved phases, so they strobed; being fixed, each had to be re-placed
-from a fresh rect and always lagged the element it was welded to; and a
-full-viewport canvas repainting under the nav's backdrop blur forced a
-whole-page re-composite every frame. A canvas inside the seam scrolls with
-it. The eleven generated scenes use no live context at all.
-
-**The sky is real.** Sun and moon come from the Astronomical Almanac series
-with Bennett refraction, checked against NOAA: sunrise within a minute, the
-equinox within an hour, azimuth exactly due south at local noon. Longitude
-comes from the visitor's own timezone rather than the island's, so a visitor
-in London at 3pm sees an afternoon rather than a black midnight hero, while
-declination still comes from the real date and the seasons stay true.
-
-**Budget.** `scripts/.out/attrib.mjs` scrolls the whole page and reports
-long-task time with the hero and the atmosphere each disabled in turn. With
-both off the page produces zero long tasks, so anything it reports is ours.
-Run it before and after touching a shader.
-
-**Tuning needs eyes.** Several problems here were invisible in code and
-obvious in a screenshot: sections that declare no background compute to
-transparent black and painted a hard black bar; the island water at full
-opacity turned elegant line art into mud; a seam sat over the bottom of
-Kelly's portrait. `scripts/.out/` holds the throwaway screenshot harness.
-`FAKE_HOUR=22 node scripts/.out/shot.mjs hero` checks the night sky — and
-note it *shifts* the clock rather than freezing it, because freezing `Date`
-stalls GSAP and every reading taken that way is meaningless.
+The WebGL sky, seams, island water, generated scenes, the custom cursor, the
+film grain, the tide curtain, the ocean sound, the ⌘K palette, and the
+affordability, compare and island-book sections. The page under all of it is
+what ships now. `git log` has every one of them if any is wanted back.
 
 ## Run
 ```
@@ -112,8 +78,6 @@ npm i
 cp .env.example .env   # add ANTHROPIC_API_KEY
 npx netlify dev        # http://localhost:8888
 npm run check          # Playwright smoke test (mocks the AI endpoints; no key needed)
-                       # includes one pass reporting capable hardware, so the
-                       # tier-2 effects actually execute rather than being skipped
 npm run og             # regenerate public/og.png
 ```
 
@@ -150,16 +114,14 @@ No IP is stored — just a salted 12-character hash (set `IP_SALT` to rotate it)
 - **Neighborhood match** → `/api/match`, lights the matched spot on the island map.
 - **Relocation brief** → `/api/concierge` with `mode: "relocate"`.
 - **Listing story** (sellers) → `/api/story`. The lead is sent whether or not the story drafts, so a backend outage never costs Kelly a seller.
-- **Affordability slider** and **neighborhood compare** are pure client-side; both hand off to the concierge with a pre-written question.
 
-Everything degrades: no GSAP (CDN blocked) → static reveals; no WebGL → flat hero; reduced motion → no preloader, no cursor, no grain animation; no speech APIs → those buttons remove themselves; backend down → the chat says so and points at Kelly's phone.
+Everything degrades: no GSAP (CDN blocked) → static reveals and an instant welcome dismiss; reduced motion → no intro, no parallax; no speech APIs → those buttons remove themselves; backend down → the chat says so and points at Kelly's phone.
 
 ## Cost
 Haiku, ~700 output tokens/turn: roughly $0.002–0.005 per concierge turn; a listing story is ~900 tokens. 1,000 conversations/mo ≈ $10–25. Per-IP limiter is 20 req/min per function instance (10 for `/api/story`); move to Upstash if it gets hammered.
 
 ## Kelly needs to confirm before launch
-- [ ] **Island Book** — every beach, restaurant and event in `public/js/data.js` (`BOOK`). These are placeholders from public knowledge; Kelly's real list is better and it should be hers.
-- [ ] **Compare scores** — the 1–5 attribute scores per neighborhood in `data.js` (`PLACES[…].s`). They're one agent's read, and they're visible to buyers.
+- [ ] **Venues** — the places the concierge recommends live in the brain (`/brain.html`). Drafted from public knowledge; Kelly's list should replace it.
 - [ ] **Domain** — `loveliveamelia.com` is hard-coded in the canonical tag, JSON-LD, sitemap and OG tags, and currently forwards to BoldTrail.
 - [ ] Email address and Facebook URL; the Zillow review count in the JSON-LD (`aggregateRating`).
 

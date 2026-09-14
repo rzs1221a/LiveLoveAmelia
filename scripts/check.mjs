@@ -1,5 +1,6 @@
 // Playwright smoke test. Serves public/ statically, mocks the AI endpoints and the
-// Netlify Forms POST, then drives every new feature across viewports and themes.
+// Netlify Forms POST, then drives the welcome screen, the concierge, the seller
+// flow and the owner pages across viewports, themes and motion settings.
 // Run: npm run check   (screenshots land in scripts/.out)
 import { chromium } from "playwright";
 import { createServer } from "node:http";
@@ -71,10 +72,7 @@ const browser = await chromium.launch();
 for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone", width: 400, height: 800 }]) {
   for (const motion of ["no-preference", "reduce"]) {
     for (const scheme of ["light", "dark"]) {
-      // The last desktop pass pretends to be a capable machine so the tier-2
-      // effects actually run. Without it the fluid simulation ships untested.
-      const capable = vp.name === "desktop" && motion === "no-preference" && scheme === "dark";
-      const label = `${vp.name}/${motion}/${scheme}${capable ? " [tier2]" : ""}`;
+      const label = `${vp.name}/${motion}/${scheme}`;
       const ctx = await browser.newContext({
         viewport: { width: vp.width, height: vp.height },
         reducedMotion: motion === "reduce" ? "reduce" : "no-preference",
@@ -106,9 +104,7 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
 
       const t = (name, cond) => { if (!cond) failures.push(`${label}: ${name}`); };
 
-      if (capable) await page.addInitScript(() => Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 12 }));
-
-      // Count every WebGL context the page asks for, so a leak shows up as a number.
+      // The effect layer is gone; nothing on the page may ask for a WebGL context.
       await page.addInitScript(() => {
         window.__glContexts = 0;
         const orig = HTMLCanvasElement.prototype.getContext;
@@ -121,14 +117,28 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
 
       await page.goto(base + "/", { waitUntil: "load" });
 
-      // The concierge is the product: it has to be in the first screen, and the
-      // page reads sellers → buyers → who Kelly is.
-      t("chat in first viewport", await page.evaluate(() => { const r = document.querySelector("#chat")?.getBoundingClientRect(); return !!r && r.top < innerHeight * 0.9; }));
-      t("section order", (await page.evaluate(() => [...document.querySelectorAll("header[id],section[id]")].map(e => e.id).join(","))).startsWith("top,value,match,afford,compare,meet,island"));
+      // First visit: the welcome screen is up, before anything else, and the page
+      // underneath cannot scroll. Choosing an answer tunes the concierge, lands the
+      // visitor on the matching section, and is remembered.
+      t("welcome shown on first visit", await page.evaluate(() => document.documentElement.classList.contains("onboard") && getComputedStyle(document.querySelector("#welcome")).display !== "none"));
+      t("welcome has four choices and a skip", (await page.locator("#welcome button[data-mode]").count()) === 4 && (await page.locator("#welcomeSkip").count()) === 1);
+      const defaultHello = await page.locator("#log .msg.k").first().innerText();
+      await page.click('#welcome button[data-mode="selling"]');
+      await page.waitForFunction(() => !document.querySelector("#welcome"), null, { timeout: 3000 }).catch(() => {});
+      t("welcome dismissed", (await page.locator("#welcome").count()) === 0 && !(await page.evaluate(() => document.documentElement.classList.contains("onboard"))));
+      t("choice remembered", (await page.evaluate(() => localStorage.getItem("lla:onboard"))) === "selling");
+      await page.waitForTimeout(motion === "reduce" ? 100 : 900);
+      t("selling lands on the seller section", await page.evaluate(() => { const r = document.querySelector("#value").getBoundingClientRect(); return r.top > -innerHeight * 0.5 && r.top < innerHeight * 0.5; }));
+      t("concierge greeting tuned", (await page.locator("#log .msg.k").first().innerText()) !== defaultHello && (await page.locator("#log .msg.k").first().innerText()).includes("selling"));
+      t("starters tuned", (await page.locator("#starters button").count()) === 4 && (await page.locator("#starters button").first().innerText()).includes("30 days"));
 
-      // Preloader never traps the visitor.
-      await page.waitForFunction(() => !document.querySelector("#loader"), null, { timeout: 3000 }).catch(() => {});
-      t("loader gone", await page.locator("#loader").count() === 0);
+      // The page reads: who Kelly is, the island, the homes, then the tools.
+      t("section order", (await page.evaluate(() => [...document.querySelectorAll("header[id],section[id]")].map(e => e.id).join(","))) === "top,meet,island,communities,listings,concierge,match,relocate,value,process,reviews,contact");
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.waitForTimeout(motion === "reduce" ? 100 : 1400);
+      t("portrait in the hero", await page.evaluate(() => { const r = document.querySelector("#portrait img")?.getBoundingClientRect(); return !!r && r.width > 100 && r.top < innerHeight; }));
+      t("hero headline visible", await page.evaluate(() => [...document.querySelectorAll(".hero h1 .l span")].every(s => { const m = new DOMMatrixReadOnly(getComputedStyle(s).transform); return Math.abs(m.f) < 2; })));
+      t("nothing left of the effect layer", (await page.locator("canvas, .seam, #loader, .grain, #pal, #soundBtn").count()) === 0);
       if (gsapReady) t("gsap available", await page.evaluate(() => typeof window.gsap !== "undefined"));
 
       // Concierge: two questions, then the handoff card.
@@ -170,41 +180,11 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
       t("story drafted", (await page.locator("#storyBody").innerText()).includes("THE POSITIONING"));
       t("valuation lead sent", posts.some((b) => b.includes("form-name=valuation") && b.includes("story=")));
 
-      // Affordability.
-      await page.locator("#afford").scrollIntoViewIfNeeded();
-      const before = await page.locator("#afPrice").innerText();
-      await page.locator("#afMo").fill("9000");
-      await page.waitForTimeout(700);
-      t("price recalculates", (await page.locator("#afPrice").innerText()) !== before);
-      t("a band highlights", (await page.locator("#afBands li.on").count()) > 0);
-      t("legend renders", (await page.locator("#afLegend li").count()) === 3);
-
-      // Compare.
-      await page.locator("#compare").scrollIntoViewIfNeeded();
-      await page.selectOption("#cmpB", "yulee");
-      await page.waitForTimeout(250);
-      t("compare bars", (await page.locator(".cmp-row .bar i").count()) === 10);
-      t("compare question set", ((await page.getAttribute("#cmpAsk", "data-ask")) || "").includes("Yulee"));
-
-      // Island book.
-      await page.locator("#book").scrollIntoViewIfNeeded();
-      const all = await page.locator(".bcard").count();
-      await page.click('#bookTabs button[data-cat="eats"]');
-      await page.waitForTimeout(250);
-      const eats = await page.locator(".bcard").count();
-      t("book filters", eats > 0 && eats < all);
-
-      // Sound toggle (no audio device in CI; it must not throw).
-      if (vp.name === "desktop") {
-        await page.click("#soundBtn").catch(() => {});
-        await page.waitForTimeout(150);
-      }
-
       // Nothing rendered by JS may end up invisible (a .rv.pre left un-cleared,
       // or a gsap.from() that captured the pre-reveal opacity as its end value).
       await page.evaluate(async () => { const h = document.body.scrollHeight; for (let y = 0; y < h; y += 400) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 40)); } });
       await page.waitForTimeout(800);
-      const invisible = await page.evaluate(() => [".bcard", ".cmp-card", ".card", ".af-bands li", ".chip"]
+      const invisible = await page.evaluate(() => [".card", ".chip", ".proc .step", ".port"]
         .map((sel) => {
           const els = [...document.querySelectorAll(sel)];
           const bad = els.filter((e) => { const c = getComputedStyle(e); return parseFloat(c.opacity) < .5 || c.visibility === "hidden" || e.getBoundingClientRect().width < 2; });
@@ -212,54 +192,35 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
         }).filter(Boolean).join(", "));
       t(`everything visible (${invisible})`, !invisible);
 
-      // No horizontal overflow at any width.
-      // Shaders must actually compile and link. This is the assertion that matters
-      // most: a broken shader renders as a plain dark rectangle, which reads as a
-      // deliberate design choice rather than a failure, so nothing else catches it.
-      // Seam canvases are created on first approach, so scroll before asserting.
-      if (motion !== "reduce" && vp.width > 700) {
-        await page.evaluate(async () => {
-          for (const el of document.querySelectorAll(".seam")) { el.scrollIntoView({ block: "center", behavior: "instant" }); await new Promise(r => setTimeout(r, 260)); }
-          scrollTo(0, 0);
-        });
-        await page.waitForTimeout(400);
-        const at = await page.evaluate(async () => {
-          const s2 = await import("/js/gl/sched.js");
-          const seams = [...document.querySelectorAll(".seam")];
-          const bad = seams.filter(el => {
-            const opaque = n => { for (let x = n; x; x = x.parentElement) { const c = getComputedStyle(x).backgroundColor; if (c && !/, ?0\)$/.test(c) && c !== "transparent") return c; } return null; };
-            const a = opaque(document.querySelector(el.dataset.above)), b = opaque(document.querySelector(el.dataset.below));
-            if (!a || !b) return true;
-            return a === b ? el.dataset.seam !== "flat" : el.dataset.seam !== "active";
-          }).length;
-          return { count: seams.length, bad, views: s2.debug().views, canvases: document.querySelectorAll(".seam canvas").length };
-        });
-        t("three seams present", at.count === 3);
-        t("seams classify their neighbours correctly", at.bad === 0);
-        t("seam views registered", at.views >= 3);
-        // Each seam owns its canvas; a shared one strobed as views on different
-        // phases cleared each other, and lagged its host during a scroll.
-        t("seams own their canvases", at.canvases >= 1);
-        t("no fixed overlay canvas", await page.locator("#fx-overlay").count() === 0);
-      }
+      t("no webgl contexts", (await page.evaluate(() => window.__glContexts || 0)) === 0);
 
-      const gl = await page.evaluate(async () => {
-        const m = await import("/js/gl/program.js");
-        return { errors: m.stats.errors, programs: m.stats.programs, live: m.stats.contexts, asked: window.__glContexts || 0 };
-      });
-      t("no shader build errors" + (gl.errors.length ? ` (${gl.errors[0]})` : ""), gl.errors.length === 0);
-      t("webgl contexts within budget" + ` (live ${gl.live}, asked ${gl.asked})`, gl.live <= 8 && gl.asked <= 10);
-      if (motion === "reduce") {
-        t("reduced motion builds no shaders", gl.programs === 0 && gl.live === 0);
-        // The canvas element stays in the DOM under reduced motion; CSS hides it
-        // and no context is ever created for it. Assert what actually matters.
-        t("reduced motion hides the hero canvas", await page.evaluate(() => {
-          const c = document.querySelector("#sea");
-          return !c || getComputedStyle(c).display === "none";
-        }));
-      } else {
-        t("hero shader built", gl.programs >= 1);
-      }
+      // Second visit: no welcome screen. `?welcome` brings it back for a demo,
+      // and Skip and Escape both let the visitor through.
+      await page.goto(base + "/", { waitUntil: "load" });
+      t("welcome not shown twice", (await page.locator("#welcome").count()) === 0 && !(await page.evaluate(() => document.documentElement.classList.contains("onboard"))));
+      t("returning visitor keeps the tuned concierge", (await page.locator("#starters button").first().innerText()).includes("30 days"));
+      await page.goto(base + "/?welcome", { waitUntil: "load" });
+      await page.waitForFunction(() => window.__onboard, null, { timeout: 5000 }).catch(() => {});
+      t("?welcome forces the screen", await page.evaluate(() => document.documentElement.classList.contains("onboard")));
+      await page.click("#welcomeSkip");
+      await page.waitForFunction(() => !document.querySelector("#welcome"), null, { timeout: 3000 }).catch(() => {});
+      t("skip dismisses", (await page.locator("#welcome").count()) === 0);
+      t("skip is remembered as browsing", (await page.evaluate(() => localStorage.getItem("lla:onboard"))) === "browsing");
+      await page.goto(base + "/?welcome", { waitUntil: "load" });
+      await page.waitForFunction(() => window.__onboard, null, { timeout: 5000 }).catch(() => {});
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector("#welcome"), null, { timeout: 3000 }).catch(() => {});
+      t("escape dismisses", (await page.locator("#welcome").count()) === 0);
+      // A module that never arrives must not lock the page: the head script lifts
+      // the screen on its own after a few seconds.
+      const errsBefore = errs.length;
+      await page.route("**/js/onboard.js", (r) => r.abort());
+      await page.goto(base + "/?welcome", { waitUntil: "load" });
+      await page.waitForFunction(() => !document.documentElement.classList.contains("onboard"), null, { timeout: 7000 }).catch(() => {});
+      t("welcome lifts by itself if its script fails", !(await page.evaluate(() => document.documentElement.classList.contains("onboard"))));
+      await page.unroute("**/js/onboard.js");
+      errs.splice(errsBefore); // the aborted module is the point of that test, not a defect
+      await page.goto(base + "/", { waitUntil: "load" });
 
       // Owner pages show nothing without the key and everything with it.
       if (vp.name === "desktop" && scheme === "light" && motion === "no-preference") {

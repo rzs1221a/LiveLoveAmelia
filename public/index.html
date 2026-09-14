@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300;1,9..144,400&family=Figtree:wght@300;400;500;600&display=swap">
-<script>try{if(matchMedia('(prefers-reduced-motion: reduce)').matches||sessionStorage.getItem('lla:seen'))document.documentElement.classList.add('no-loader');else document.documentElement.classList.add('loading')}catch(e){}</script>
+<script>try{var q=new URLSearchParams(location.search);if(q.has('welcome')||!localStorage.getItem('lla:onboard'))document.documentElement.classList.add('onboard');setTimeout(function(){if(!window.__onboard)document.documentElement.classList.remove('onboard')},5000)}catch(e){}</script>
 <style>
 :root{
   color-scheme:light dark;
@@ -36,9 +36,6 @@
   --inv-bg:#F3F0EA; --inv-fg:#141C24; --inv-fg-2:rgba(20,28,36,.72); --inv-line:rgba(20,28,36,.14);
   --shadow:0 20px 60px -20px rgba(0,0,0,.6); --drift:#B8AC9A;}
 html{background:var(--marsh)}
-.loader{position:fixed;inset:0;z-index:3000;background:var(--marsh);color:var(--sand);display:grid;place-items:center;overflow:hidden}
-html.no-loader .loader{display:none}
-html.loading{overflow:hidden}
 </style>
 <link rel="stylesheet" href="/styles.css">
 <link rel="canonical" href="https://loveliveamelia.com/">
@@ -80,23 +77,38 @@ html.loading{overflow:hidden}
 </script>
 </head>
 <body>
-<div class="loader" id="loader" aria-hidden="true"><div class="tide"></div><p class="display loader-word">Love. Live. Amelia.</p></div>
-<div class="grain" aria-hidden="true"></div>
+
+<div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+  <div class="box">
+    <span class="eyebrow">Welcome to Amelia Island</span>
+    <h2 id="welcomeTitle">What brings you <em>to Amelia?</em></h2>
+    <p class="lede">Pick one and the page takes you straight there. Kelly Voges has lived on the island eighteen years. Her concierge answers at any hour. She calls you back herself.</p>
+    <div class="opts">
+      <button type="button" data-mode="buying"><b>Buying a home</b><span>Neighborhoods, prices, what to know before you look.</span></button>
+      <button type="button" data-mode="selling"><b>Selling my home</b><span>How Kelly prepares, prices and positions a listing.</span></button>
+      <button type="button" data-mode="relocating"><b>Relocating here</b><span>What the move really looks like, from someone who made it.</span></button>
+      <button type="button" data-mode="browsing"><b>Just looking</b><span>Browse the island and the homes on the market.</span></button>
+    </div>
+    <div class="skip">
+      <span class="who"><span class="av" aria-hidden="true"></span><span>Kelly Voges · Berkshire Hathaway HomeServices Heymann Williams Realty</span></span>
+      <a href="#top" id="welcomeSkip">Skip this →</a>
+    </div>
+  </div>
+</div>
+
 <nav id="nav">
   <div class="wrap">
     <a class="brand" href="#top"><span class="display">Love. Live. Amelia.</span><small>Kelly Voges</small></a>
     <ul>
-      <li><a href="#concierge">Concierge</a></li>
-      <li><a href="#value">Sellers</a></li>
-      <li><a href="#match">Find Your Fit</a></li>
       <li><a href="#meet">Meet Kelly</a></li>
       <li><a href="#island">The Island</a></li>
       <li><a href="#listings">Listings</a></li>
+      <li><a href="#concierge">Concierge</a></li>
+      <li><a href="#value">Sellers</a></li>
       <li><a href="#contact">Contact</a></li>
     </ul>
     <div class="right">
-      <button class="kbd sound" id="soundBtn" type="button" aria-pressed="false" aria-label="Ocean sound"><span class="wv" aria-hidden="true"><i></i><i></i><i></i></span><span class="lbl">Sound</span></button>
-      <button class="kbd" id="palBtn" type="button" aria-label="Ask the island"><span>Ask the island</span><kbd>⌘K</kbd></button>
+      <a class="kbd" href="sms:15125789942"><span>Text Kelly</span></a>
       <button class="burger" id="burger" type="button" aria-label="Menu"><i></i></button>
     </div>
   </div>
@@ -104,58 +116,209 @@ html.loading{overflow:hidden}
 <div class="drawer" id="drawer">
   <button class="x" id="drawerX" type="button" aria-label="Close">×</button>
   <ul>
-    <li><a href="#concierge">Concierge</a></li><li><a href="#value">Sellers</a></li><li><a href="#match">Find Your Fit</a></li><li><a href="#meet">Meet Kelly</a></li><li><a href="#island">The Island</a></li><li><a href="#listings">Listings</a></li><li><a href="#contact">Contact</a></li>
+    <li><a href="#meet">Meet Kelly</a></li><li><a href="#island">The Island</a></li><li><a href="#listings">Listings</a></li><li><a href="#concierge">Concierge</a></li><li><a href="#value">Sellers</a></li><li><a href="#contact">Contact</a></li>
   </ul>
 </div>
 
 <header class="hero" id="top">
-  <canvas id="sea" aria-hidden="true"></canvas>
+  <div class="sea" aria-hidden="true"></div>
   <div class="veil" aria-hidden="true"></div>
   <div class="wrap">
-    <div class="pitch">
+    <div>
       <span class="eyebrow">Amelia Island · Fernandina Beach · Nassau County</span>
-      <h1><span class="l"><span>Ask anything</span></span><span class="l"><span>about life</span></span><span class="l"><span>on <em>Amelia.</em></span></span></h1>
-      <p class="sub">Schools, flood zones, the Plantation vs. the Historic District, what a Boston-to-Fernandina move really looks like. A real answer in seconds, any hour. Then Kelly Voges follows up personally.</p>
-      <div class="powered"><span class="dot"></span> Trained on Kelly's market, process &amp; communities · 18 years on the island</div>
+      <h1><span class="l"><span>Love.</span></span><span class="l"><span>Live.</span></span><span class="l"><span><em>Amelia.</em></span></span></h1>
+      <p class="sub">Luxury Collection Specialist, Berkshire Hathaway HomeServices Heymann Williams Realty. Eighteen years on the island. Buying, selling, or moving down from up north: she has done each one herself, and done it for her clients.</p>
+      <div class="cta">
+        <a class="btn primary" href="#concierge">Ask the Island Concierge <span class="arr">→</span></a>
+        <a class="btn ghost-inv" href="#listings">Browse homes</a>
+      </div>
+    </div>
+    <div class="portrait" id="portrait">
+      <img src="/kelly.jpg" alt="Kelly Voges, smiling, leaning on a kitchen counter" width="560" height="706">
+      <div class="tag"><b>Kelly Voges</b>Sales Associate · Luxury Collection Specialist · Leading Edge Society</div>
+    </div>
+  </div>
+</header>
+
+<div class="rail">
+  <div class="wrap">
+    <div class="stat"><div class="n"><span data-count="18">0</span><sup>yrs</sup></div><div class="l">Living on Amelia Island</div></div>
+    <div class="stat"><div class="n"><span data-count="5.0" data-dec="1">0.0</span><sup>★</sup></div><div class="l">Zillow rating · 12 verified reviews</div></div>
+    <div class="stat"><div class="n"><span data-count="30">0</span><sup>+</sup></div><div class="l">Homes sold, $102K to $1.1M</div></div>
+    <div class="stat"><div class="n"><span data-count="30">0</span><sup>days</sup></div><div class="l">"We sold within 30 days," a recent seller</div></div>
+  </div>
+</div>
+
+<section class="sec meet" id="meet">
+  <div class="wrap">
+    <div class="sticky">
+      <span class="eyebrow">Meet Kelly</span>
+      <p class="pull split" style="margin-top:18px">I don't just help people buy and sell homes. I help them build the <em>lifestyle</em> they've been searching for.</p>
+      <div class="story">
+        <div class="row"><span class="mono">Boston</span><span>Where she started. She made the move south herself, so she knows what it costs and what it takes.</span></div>
+        <div class="row"><span class="mono">18 yrs</span><span>On Amelia Island. Long enough to watch this market rise, stall and rise again.</span></div>
+        <div class="row"><span class="mono">Teacher</span><span>A teacher in the Nassau County School District. Patient, thorough, and used to hard questions.</span></div>
+        <div class="row"><span class="mono">BHHS</span><span>Luxury Collection Specialist with Heymann Williams Realty, 203 Centre Street, downtown Fernandina.</span></div>
+      </div>
+    </div>
+    <div class="body rv pre">
+      <p>I help buyers and sellers navigate the Amelia Island, Fernandina Beach, and Nassau County real estate market with <strong>confidence, strategy, and local expertise.</strong></p>
+      <p>As a Luxury Collection Specialist with Berkshire Hathaway HomeServices Heymann Williams Realty, I specialize in coastal homes, luxury properties, second homes, vacation properties, and helping families relocate to one of Florida's most beautiful coastal communities. With deep roots in Amelia Island and years of local market knowledge, I offer more than real estate guidance — I provide the insider perspective buyers and sellers need to make smart decisions.</p>
+      <p>Whether you're purchasing your dream beach home, selling a luxury property, investing in coastal real estate, or relocating to Northeast Florida, I believe every transaction should feel <strong>personal, seamless, and results-driven.</strong></p>
+      <p>My clients know me for being highly responsive, detail-oriented, honest, and fiercely committed to protecting their goals from contract to closing.</p>
+      <div class="creds">
+        <span class="chip"><i></i>Luxury Collection Specialist</span><span class="chip"><i></i>Leading Edge Society</span><span class="chip"><i></i>Honors Society</span><span class="chip"><i></i>Relocation · Second Homes · New Construction</span><span class="chip"><i></i>FL Lic. 3458113</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec island" id="island">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 class="split">Thirteen miles. Seven ways to live.</h2>
+      <p>Tap a point. Kelly has shown homes in all seven.</p>
+    </div>
+    <div class="grid">
+      <div class="map" id="map">
+        <svg viewBox="0 0 400 520" role="img" aria-label="Stylized map of Amelia Island with neighborhoods">
+          <defs><clipPath id="c"><rect width="400" height="520"/></clipPath></defs>
+          <g clip-path="url(#c)">
+            <g class="water"><path d="M0 60 Q60 50 120 62 T240 60 T400 58"/><path d="M0 120 Q60 110 120 122 T240 120 T400 118"/><path d="M0 460 Q60 450 120 462 T240 460 T400 458"/><path d="M300 180 q10 20 0 40 t0 40 t0 40 t0 40"/><path d="M330 160 q10 20 0 40 t0 40 t0 40 t0 40 t0 40"/><path d="M360 140 q10 20 0 40 t0 40 t0 40 t0 40 t0 40 t0 40"/></g>
+            <path class="main" d="M-10 90 L120 84 Q140 120 130 160 L118 200 Q112 260 122 320 Q132 380 118 430 L100 530 L-10 530 Z"/>
+            <path class="land" d="M150 46 Q200 36 236 44 Q252 60 246 84 Q262 110 256 140 L258 190 Q262 250 254 310 Q250 370 238 420 Q228 462 210 486 Q196 500 178 486 Q164 456 168 410 Q176 360 172 300 Q168 240 174 180 Q172 130 162 100 Q146 72 150 46 Z"/>
+            <path class="land" d="M150 176 q-18 -6 -26 8 q-6 18 8 28 q18 8 28 -6 q6 -18 -10 -30 Z"/>
+            <path class="road" d="M120 190 L150 196 L172 200"/><path class="road" d="M196 60 Q214 140 214 240 Q214 340 206 440"/>
+            <text class="lbl" x="40" y="140">Amelia River</text><text class="lbl" x="296" y="110">Atlantic Ocean</text><text class="lbl" x="30" y="300">Yulee</text><text class="lbl" x="150" y="512">Nassau Sound</text>
+            <text class="compass" x="352" y="500">N ↑</text>
+            <g class="spot" data-id="fort"><circle class="ring" cx="186" cy="62" r="6"/><circle cx="186" cy="62" r="6"/><text x="200" y="58">Fort Clinch</text></g>
+            <g class="spot" data-id="historic"><circle class="ring" cx="176" cy="104" r="6"/><circle cx="176" cy="104" r="6"/><text x="190" y="100">Historic District</text></g>
+            <g class="spot" data-id="north"><circle class="ring" cx="232" cy="130" r="6"/><circle cx="232" cy="130" r="6"/><text x="244" y="126">North Beach</text></g>
+            <g class="spot" data-id="crane"><circle class="ring" cx="138" cy="192" r="6"/><circle cx="138" cy="192" r="6"/><text x="70" y="176">Crane Island</text></g>
+            <g class="spot" data-id="yulee"><circle class="ring" cx="70" cy="330" r="6"/><circle cx="70" cy="330" r="6"/><text x="82" y="350">Yulee</text></g>
+            <g class="spot" data-id="south"><circle class="ring" cx="232" cy="330" r="6"/><circle cx="232" cy="330" r="6"/><text x="244" y="326">South End · Ritz</text></g>
+            <g class="spot" data-id="plantation"><circle class="ring" cx="208" cy="430" r="6"/><circle cx="208" cy="430" r="6"/><text x="222" y="434">Plantation</text></g>
+          </g>
+        </svg>
+        <span class="note">Stylized · not to scale</span>
+      </div>
+      <div class="place" id="place"></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec reel" id="communities">
+  <div class="wrap head">
+    <div class="sec-head" style="margin-bottom:0">
+      <h2 class="split">Five places to start.</h2>
+      <p>Scroll sideways. Tap one and the concierge picks up from there.</p>
+    </div>
+  </div>
+  <div class="track" id="reel">
+    <button class="port" data-ask="Tell me about living in Amelia Island Plantation — who it suits, what homes there are like, and what I should know before buying."><div class="art a1"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M0 220 C80 200 120 250 200 230 S320 200 400 225"/><path d="M0 250 C90 235 140 275 220 255 S330 235 400 258"/><path d="M0 190 C70 175 130 215 200 200 S330 170 400 195"/><circle cx="310" cy="70" r="26" stroke="#9CC2BD"/></svg></div><span class="idx">01 / 05</span><span class="k">The Resort</span><h3>Amelia Island Plantation</h3><p>Gated, oak-canopied, ocean and marsh views, golf and the Omni at your doorstep. Second homes and forever homes alike.</p><span class="go">Ask the concierge →</span></button>
+    <button class="port" data-ask="What is Crane Island like? I'm interested in new construction on Amelia Island."><div class="art a2"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M60 260 L60 120 L200 60 L340 120 L340 260"/><path d="M110 260 L110 150 L290 150 L290 260"/><path d="M170 260 L170 190 L230 190 L230 260"/></svg></div><span class="idx">02 / 05</span><span class="k">New Construction</span><h3>Crane Island</h3><p>A new island village on the Intracoastal. Porches, boardwalks, and homes you can still pick finishes on.</p><span class="go">Ask the concierge →</span></button>
+    <button class="port" data-ask="I love historic homes. What's it like to live in Fernandina Beach's Historic District?"><div class="art a3"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M40 260 L40 140 L120 90 L200 140 L200 260"/><path d="M200 260 L200 120 L280 80 L360 120 L360 260"/><path d="M70 260 L70 180 L100 180 L100 260 M230 260 L230 170 L260 170 L260 260"/><path d="M0 260 H400" stroke="#9CC2BD"/></svg></div><span class="idx">03 / 05</span><span class="k">Downtown Charm</span><h3>Historic District</h3><p>Victorian porches, Centre Street a bike ride away, shrimp boats at the marina. Fifty blocks of the Florida people move here for.</p><span class="go">Ask the concierge →</span></button>
+    <button class="port" data-ask="What's the South End of Amelia Island near the Ritz-Carlton like for a luxury beach home?"><div class="art a4"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M0 240 H400"/><path d="M60 240 L60 100 L340 100 L340 240"/><path d="M100 240 L100 140 L160 140 L160 240 M240 240 L240 140 L300 140 L300 240"/><circle cx="330" cy="50" r="18" stroke="#9CC2BD"/></svg></div><span class="idx">04 / 05</span><span class="k">Oceanfront Luxury</span><h3>South End &amp; the Ritz</h3><p>Dune-front estates and resort condos on the quietest stretch of sand, with the Ritz-Carlton as your neighbor.</p><span class="go">Ask the concierge →</span></button>
+    <button class="port" data-ask="We want more house for the money and good schools. Should we look at Yulee instead of the island?"><div class="art a5"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M0 200 Q100 170 200 200 T400 200"/><path d="M40 200 L40 130 L110 90 L180 130 L180 200"/><path d="M220 200 L220 140 L290 100 L360 140 L360 200"/><path d="M0 260 Q100 230 200 260 T400 260"/></svg></div><span class="idx">05 / 05</span><span class="k">Mainland Value</span><h3>Yulee</h3><p>Ten minutes over the bridge: newer neighborhoods, bigger lots, A-rated schools, and the island still in your weekend.</p><span class="go">Ask the concierge →</span></button>
+    <div class="end"></div>
+  </div>
+</section>
+
+<section class="sec list" id="listings">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 class="split">On the market now.</h2>
+      <p>Six sample homes until the MLS feed is wired in. Then these become Kelly's live listings. Hover one to ask about it.</p>
+    </div>
+    <div class="grid" id="listingGrid"></div>
+    <p class="note">Prices and specs come from current brokerage listings. Photos and addresses are placeholders until the MLS feed lands.</p>
+  </div>
+</section>
+
+<section class="sec conc" id="concierge">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Island Concierge</span>
+      <h2 style="margin-top:18px">Ask anything about <em>life on Amelia.</em></h2>
+      <p class="lede">Schools. Flood zones. The Plantation or the Historic District. What a Boston-to-Fernandina move costs. Kelly's concierge answers at any hour, then hands you to Kelly.</p>
+      <div class="powered"><span class="dot"></span> Trained on Kelly's market and her process</div>
       <div class="starters" id="starters">
-        <button type="button" data-ask="We're relocating from Massachusetts with two kids and a dog. Where on Amelia Island should we be looking?"><span>Relocating from Massachusetts with kids and a dog — where should we look?</span><span>→</span></button>
+        <button type="button" data-ask="We're relocating from Massachusetts with two kids and a dog. Where on Amelia Island should we be looking?"><span>Relocating from Massachusetts with kids and a dog. Where should we look?</span><span>→</span></button>
         <button type="button" data-ask="What's the difference between Amelia Island Plantation, Crane Island, and the Historic District?"><span>Plantation vs. Crane Island vs. Historic District?</span><span>→</span></button>
         <button type="button" data-ask="I'm thinking of selling my home in Fernandina Beach. How does Kelly prepare and position a listing?"><span>How does Kelly get a home sold in 30 days?</span><span>→</span></button>
         <button type="button" data-ask="What should I know about buying a second home or vacation rental on Amelia Island?"><span>Buying a second home or vacation rental here</span><span>→</span></button>
       </div>
     </div>
-    <div class="hero-chat" id="concierge">
-      <div class="chat" id="chat">
-        <div class="top">
-          <span class="av" style="background-image:url('/kelly.jpg')"></span>
-          <div><b>Kelly's Island Concierge</b><small>Answers in seconds · Kelly follows up personally</small></div>
-          <span class="st" id="chatStatus"><i></i>Online</span>
-        </div>
-        <div class="log" id="log">
-          <div class="msg k">Hi — I'm Kelly's Island Concierge. I know Amelia Island, Fernandina Beach, Yulee and the rest of Nassau County the way Kelly does after 18 years here. Ask me about neighborhoods, the buying or selling process, relocating from up north, or anything else on your mind. What brings you to the island?</div>
-        </div>
-        <form id="chatForm">
-          <input id="chatInput" type="text" placeholder="Ask about neighborhoods, schools, the market…" autocomplete="off" aria-label="Your question">
-          <button type="button" class="mic" id="micBtn" aria-pressed="false" aria-label="Ask with your voice" title="Ask with your voice"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>
-          <button type="button" class="stop" id="stopBtn">Stop</button>
-          <button type="submit" class="send" id="sendBtn">Ask</button>
-        </form>
-        <div class="tools" id="chatTools">
-          <button type="button" id="ttsBtn" aria-pressed="false">🔊 Read aloud</button>
-          <button type="button" id="shareBtn" hidden>Share this chat</button>
-          <button type="button" id="toKellyBtn" hidden>Send Kelly this chat</button>
-        </div>
-        <div class="foot">Concierge answers are general guidance, not legal, tax, or financial advice. For specifics on any property, Kelly will follow up: 512-578-9942.</div>
+    <div class="chat" id="chat">
+      <div class="top">
+        <span class="av" style="background-image:url('/kelly.jpg')"></span>
+        <div><b>Kelly's Island Concierge</b><small>Answers in seconds · Kelly follows up personally</small></div>
+        <span class="st" id="chatStatus"><i></i>Online</span>
       </div>
+      <div class="log" id="log">
+        <div class="msg k">Hi, I'm Kelly's Island Concierge. Ask me about neighborhoods, buying or selling here, or moving down from up north. Eighteen years of Kelly's island knowledge, any hour. What brings you to Amelia?</div>
+      </div>
+      <form id="chatForm">
+        <input id="chatInput" type="text" placeholder="Ask about neighborhoods, schools, the market…" autocomplete="off" aria-label="Your question">
+        <button type="button" class="mic" id="micBtn" aria-pressed="false" aria-label="Ask with your voice" title="Ask with your voice"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg></button>
+        <button type="button" class="stop" id="stopBtn">Stop</button>
+        <button type="submit" class="send" id="sendBtn">Ask</button>
+      </form>
+      <div class="tools" id="chatTools">
+        <button type="button" id="ttsBtn" aria-pressed="false">🔊 Read aloud</button>
+        <button type="button" id="shareBtn" hidden>Share this chat</button>
+        <button type="button" id="toKellyBtn" hidden>Send Kelly this chat</button>
+      </div>
+      <div class="foot">Concierge answers are general guidance, not legal, tax, or financial advice. For specifics on any property, Kelly will follow up: 512-578-9942.</div>
     </div>
   </div>
-</header>
+</section>
+
+<section class="sec match" id="match">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 class="split">Find your fit in four taps.</h2>
+      <p>Four questions about how you want to live. The concierge names your neighborhood and lights it up on the map.</p>
+    </div>
+    <div class="panel rv pre">
+      <div class="q" id="quiz">
+        <div><label>Your ideal Saturday</label><div class="opts" data-key="saturday"><button type="button">Beach &amp; bike paths</button><button type="button">Downtown brunch &amp; boutiques</button><button type="button">Golf, tennis, resort pool</button><button type="button">Boat on the Intracoastal</button><button type="button">Quiet, space, big yard</button></div></div>
+        <div><label>What you're buying</label><div class="opts" data-key="type"><button type="button">Primary home</button><button type="button">Second / vacation home</button><button type="button">Investment / rental</button><button type="button">New construction</button></div></div>
+        <div><label>Budget</label><div class="opts" data-key="budget"><button type="button">Under $500K</button><button type="button">$500K – $900K</button><button type="button">$900K – $1.5M</button><button type="button">$1.5M+</button></div></div>
+        <div><label>Timeline</label><div class="opts" data-key="timeline"><button type="button">Next 3 months</button><button type="button">This year</button><button type="button">Just exploring</button></div></div>
+        <div><button class="btn primary" type="button" id="matchBtn">Match me <span class="arr">→</span></button></div>
+      </div>
+      <div class="res" id="matchRes"><p class="placeholder">One answer per row. You get a neighborhood, the reason, and a runner-up.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec relo" id="relocate">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Relocation brief</span>
+      <h2 style="margin-top:14px">From <em>your city</em> to the island, on one page.</h2>
+      <p class="lede">Kelly made this move herself, from Boston. Say where you're coming from and the concierge drafts the brief she would walk you through on a first call.</p>
+      <form id="reloForm">
+        <div class="row"><input id="reloCity" type="text" placeholder="Coming from (e.g. Boston, MA)" aria-label="Your city" required><select id="reloWho" aria-label="Who's moving"><option>Just me</option><option>Couple</option><option>Family with kids</option><option>Retiring</option><option>Remote worker</option></select></div>
+        <div class="row"><select id="reloWhy" aria-label="Why"><option>Primary residence</option><option>Second home</option><option>Investment property</option></select><select id="reloBudget" aria-label="Budget"><option>Under $500K</option><option>$500K – $900K</option><option>$900K – $1.5M</option><option>$1.5M+</option></select></div>
+        <button class="btn primary" type="submit" style="justify-self:start">Draft my brief <span class="arr">→</span></button>
+      </form>
+    </div>
+    <div class="brief" id="brief">
+      <div class="hd"><span class="display">Relocation Brief</span><span class="mono" id="briefFor">Awaiting details</span></div>
+      <div class="body empty" id="briefBody">Your brief lands here: the feel of the island, where to look, the numbers, the logistics, and what your first thirty days with Kelly look like.</div>
+      <span class="stamp">— Kelly's Island Concierge</span>
+    </div>
+  </div>
+</section>
+
 <section class="sec value" id="value">
   <div class="wrap">
     <div>
       <span class="eyebrow">Sellers</span>
       <h2 style="margin-top:14px">What's my home <em>worth?</em></h2>
-      <p class="lede">Kelly brings the comparable sales. First, here's the other half of the answer: how she'd position, prepare and launch your home — written for your house, in about a minute.</p>
+      <p class="lede">Kelly brings the comparable sales. The other half of the answer is here now: how she would prepare, position and launch your home. Written for your house, in about a minute.</p>
       <ol class="steps-nav" id="valNav"><li class="on">Where</li><li>The home</li><li>You</li></ol>
       <form id="valForm" novalidate>
         <fieldset class="step on" data-step="1">
@@ -191,224 +354,27 @@ html.loading{overflow:hidden}
     </div>
     <div class="brief story" id="story">
       <div class="hd"><span class="display">Listing Story</span><span class="mono" id="storyFor">Awaiting details</span></div>
-      <div class="body empty" id="storyBody">The angle Kelly would lead with, what to prepare first, who the buyer is, and what the first two weeks on the market look like — written for your home.</div>
+      <div class="body empty" id="storyBody">The angle Kelly would lead with, what to fix first, who the buyer is, and what the first two weeks on the market look like. Written for your home.</div>
       <span class="stamp">— Kelly's Island Concierge</span>
     </div>
   </div>
 </section>
-<section class="sec match" id="match">
-  <div class="wrap">
-    <div class="sec-head">
-      <h2 class="split">Find your fit in four taps.</h2>
-      <p>Tell the concierge how you want to live. It'll match you to the part of Amelia Island that fits — and light it up on the map.</p>
-    </div>
-    <div class="panel rv pre">
-      <div class="q" id="quiz">
-        <div><label>Your ideal Saturday</label><div class="opts" data-key="saturday"><button type="button">Beach &amp; bike paths</button><button type="button">Downtown brunch &amp; boutiques</button><button type="button">Golf, tennis, resort pool</button><button type="button">Boat on the Intracoastal</button><button type="button">Quiet, space, big yard</button></div></div>
-        <div><label>What you're buying</label><div class="opts" data-key="type"><button type="button">Primary home</button><button type="button">Second / vacation home</button><button type="button">Investment / rental</button><button type="button">New construction</button></div></div>
-        <div><label>Budget</label><div class="opts" data-key="budget"><button type="button">Under $500K</button><button type="button">$500K – $900K</button><button type="button">$900K – $1.5M</button><button type="button">$1.5M+</button></div></div>
-        <div><label>Timeline</label><div class="opts" data-key="timeline"><button type="button">Next 3 months</button><button type="button">This year</button><button type="button">Just exploring</button></div></div>
-        <div><button class="btn primary" type="button" id="matchBtn">Match me <span class="arr">→</span></button></div>
-      </div>
-      <div class="res" id="matchRes"><p class="placeholder">Pick one answer per row and the concierge will name your neighborhood, explain the match, and suggest a runner-up.</p></div>
-    </div>
-  </div>
-</section>
-<div class="pal" id="pal" role="dialog" aria-label="Ask the island">
-  <div class="box">
-    <input id="palInput" type="text" placeholder="Ask the island anything…" autocomplete="off">
-    <div class="hint"><span>Enter to ask · Esc to close</span><span>Island Concierge</span></div>
-    <div class="sug" id="palSug"></div>
-  </div>
-</div>
-<section class="sec afford" id="afford">
-  <div class="wrap">
-    <div class="sec-head">
-      <h2 class="split">What a monthly number buys here.</h2>
-      <p>Move the slider. It works backward from the payment you're comfortable with to the price range — and the parts of the island that live there.</p>
-    </div>
-    <div class="panel rv pre">
-      <div class="af-controls">
-        <div class="af-row">
-          <label for="afMo">Comfortable monthly payment</label>
-          <output id="afMoOut" for="afMo">$5,000</output>
-        </div>
-        <input type="range" id="afMo" min="2000" max="15000" step="100" value="5000" aria-label="Monthly payment">
-        <div class="row">
-          <label>Rate <input type="number" id="afRate" value="6.5" step="0.125" min="2" max="12" inputmode="decimal"><span class="u">%</span></label>
-          <label>Down payment <input type="number" id="afDown" value="20" step="5" min="0" max="80" inputmode="numeric"><span class="u">%</span></label>
-        </div>
-        <details class="assume">
-          <summary>Assumptions</summary>
-          <div class="row">
-            <label>Property tax <input type="number" id="afTax" value="1.0" step="0.1" min="0" max="4" inputmode="decimal"><span class="u">%/yr</span></label>
-            <label>Insurance <input type="number" id="afIns" value="0.9" step="0.1" min="0" max="6" inputmode="decimal"><span class="u">%/yr</span></label>
-          </div>
-          <label>HOA / condo dues <input type="number" id="afHoa" value="150" step="25" min="0" max="2000" inputmode="numeric"><span class="u">$/mo</span></label>
-          <p class="fine">30-year fixed. Coastal insurance varies a lot by property and elevation; flood coverage can be separate and additional.</p>
-        </details>
-        <p class="af-note"><b>How this works.</b> The payment you pick has to cover principal and interest, an estimate of property tax and insurance, and any HOA or condo dues — so the price it supports is smaller than a mortgage calculator alone would suggest. If you know your real numbers, put them in the assumptions and the answer follows.</p>
-      </div>
-      <div class="af-res">
-        <span class="eyebrow">Roughly a</span>
-        <div class="af-big" id="afPrice">$0</div>
-        <div class="af-range" id="afRange">home</div>
-        <div class="af-bar" id="afBar" aria-hidden="true"><i class="pi"></i><i class="ti"></i><i class="ho"></i></div>
-        <ul class="af-legend" id="afLegend"></ul>
-        <ul class="af-bands" id="afBands"></ul>
-        <button class="btn primary" type="button" id="afAsk">Ask what this buys <span class="arr">→</span></button>
-        <p class="fine">Estimates only — not a loan quote or an offer of credit. Kelly can introduce you to a local lender who'll run real numbers.</p>
-      </div>
-    </div>
-  </div>
-</section>
-<section class="sec compare" id="compare">
-  <div class="wrap">
-    <div class="sec-head">
-      <h2 class="split">Two places, side by side.</h2>
-      <p>Deciding between neighborhoods is the hardest part. Line them up on the things that actually change your day.</p>
-    </div>
-    <div class="cmp-pick">
-      <label>Compare <select id="cmpA" aria-label="First neighborhood"></select></label>
-      <span class="vs">vs</span>
-      <label><select id="cmpB" aria-label="Second neighborhood"></select></label>
-    </div>
-    <div class="cmp-grid" id="cmpGrid"></div>
-    <div class="cmp-foot">
-      <button class="btn primary" type="button" id="cmpAsk">Ask the concierge to compare <span class="arr">→</span></button>
-      <p class="note">Scores are Kelly's read on amenities, housing stock and price level — not a rating of the people who live there.</p>
-    </div>
-  </div>
-</section>
-<section class="sec meet" id="meet">
-  <div class="wrap">
-    <div class="sticky">
-      <img class="meet-portrait" src="/kelly.jpg" alt="Kelly Voges, smiling, leaning on a kitchen counter" width="560" height="706" loading="lazy">
-      <span class="eyebrow">Meet Kelly</span>
-      <p class="pull split" style="margin-top:18px">I don't just help people buy and sell homes. I help them build the <em>lifestyle</em> they've been searching for.</p>
-      <div class="story">
-        <div class="row"><span class="mono">Boston</span><span>Where she started. Kelly knows exactly what it feels like to make the move south — because she made it.</span></div>
-        <div class="row"><span class="mono">18 yrs</span><span>On Amelia Island. Deep roots, real neighbors, and years of watching this market move.</span></div>
-        <div class="row"><span class="mono">Teacher</span><span>A dedicated educator in the Nassau County School District — patient, thorough, and committed to giving back.</span></div>
-        <div class="row"><span class="mono">BHHS</span><span>Luxury Collection Specialist with Heymann Williams Realty, 203 Centre Street, downtown Fernandina.</span></div>
-      </div>
-      <svg class="sig" id="sig" viewBox="0 0 360 130" role="img" aria-label="Kelly's signature"><text x="4" y="96">Kelly</text></svg>
-    </div>
-    <div class="body rv pre">
-      <p>I help buyers and sellers navigate the Amelia Island, Fernandina Beach, and Nassau County real estate market with <strong>confidence, strategy, and local expertise.</strong></p>
-      <p>As a Luxury Collection Specialist with Berkshire Hathaway HomeServices Heymann Williams Realty, I specialize in coastal homes, luxury properties, second homes, vacation properties, and helping families relocate to one of Florida's most beautiful coastal communities. With deep roots in Amelia Island and years of local market knowledge, I offer more than real estate guidance — I provide the insider perspective buyers and sellers need to make smart decisions.</p>
-      <p>Whether you're purchasing your dream beach home, selling a luxury property, investing in coastal real estate, or relocating to Northeast Florida, I believe every transaction should feel <strong>personal, seamless, and results-driven.</strong></p>
-      <p>My clients know me for being highly responsive, detail-oriented, honest, and fiercely committed to protecting their goals from contract to closing.</p>
-      <div class="creds">
-        <span class="chip"><i></i>Luxury Collection Specialist</span><span class="chip"><i></i>Leading Edge Society</span><span class="chip"><i></i>Honors Society</span><span class="chip"><i></i>Relocation · Second Homes · New Construction</span><span class="chip"><i></i>FL Lic. 3458113</span>
-      </div>
-    </div>
-  </div>
-</section>
-<div class="seam" data-above="#meet" data-below="#island" aria-hidden="true"></div>
-<section class="sec island" id="island">
-  <div class="wrap">
-    <div class="sec-head">
-      <h2 class="split">Thirteen miles. Seven ways to live.</h2>
-      <p>Tap a point. The concierge knows every one of them — and so does Kelly.</p>
-    </div>
-    <div class="grid">
-      <div class="map" id="map">
-        <svg viewBox="0 0 400 520" role="img" aria-label="Stylized map of Amelia Island with neighborhoods">
-          <defs><clipPath id="c"><rect width="400" height="520"/></clipPath><linearGradient id="beamGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9CC2BD" stop-opacity=".55"/><stop offset="1" stop-color="#9CC2BD" stop-opacity="0"/></linearGradient><filter id="beamSoft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5"/></filter></defs>
-          <g clip-path="url(#c)">
-            <g class="water"><path d="M0 60 Q60 50 120 62 T240 60 T400 58"/><path d="M0 120 Q60 110 120 122 T240 120 T400 118"/><path d="M0 460 Q60 450 120 462 T240 460 T400 458"/><path d="M300 180 q10 20 0 40 t0 40 t0 40 t0 40"/><path d="M330 160 q10 20 0 40 t0 40 t0 40 t0 40 t0 40"/><path d="M360 140 q10 20 0 40 t0 40 t0 40 t0 40 t0 40 t0 40"/></g>
-            <path class="main" d="M-10 90 L120 84 Q140 120 130 160 L118 200 Q112 260 122 320 Q132 380 118 430 L100 530 L-10 530 Z"/>
-            <path class="land" d="M150 46 Q200 36 236 44 Q252 60 246 84 Q262 110 256 140 L258 190 Q262 250 254 310 Q250 370 238 420 Q228 462 210 486 Q196 500 178 486 Q164 456 168 410 Q176 360 172 300 Q168 240 174 180 Q172 130 162 100 Q146 72 150 46 Z"/>
-            <path class="land" d="M150 176 q-18 -6 -26 8 q-6 18 8 28 q18 8 28 -6 q6 -18 -10 -30 Z"/>
-            <path class="road" d="M120 190 L150 196 L172 200"/><path class="road" d="M196 60 Q214 140 214 240 Q214 340 206 440"/>
-            <text class="lbl" x="40" y="140">Amelia River</text><text class="lbl" x="296" y="110">Atlantic Ocean</text><text class="lbl" x="30" y="300">Yulee</text><text class="lbl" x="150" y="512">Nassau Sound</text>
-            <text class="compass" x="352" y="500">N ↑</text>
-            <g class="spot" data-id="fort"><circle class="ring" cx="186" cy="62" r="6"/><circle cx="186" cy="62" r="6"/><text x="200" y="58">Fort Clinch</text></g>
-            <g class="spot" data-id="historic"><circle class="ring" cx="176" cy="104" r="6"/><circle cx="176" cy="104" r="6"/><text x="190" y="100">Historic District</text></g>
-            <g class="spot" data-id="north"><circle class="ring" cx="232" cy="130" r="6"/><circle cx="232" cy="130" r="6"/><text x="244" y="126">North Beach</text></g>
-            <g class="spot" data-id="crane"><circle class="ring" cx="138" cy="192" r="6"/><circle cx="138" cy="192" r="6"/><text x="70" y="176">Crane Island</text></g>
-            <g class="spot" data-id="yulee"><circle class="ring" cx="70" cy="330" r="6"/><circle cx="70" cy="330" r="6"/><text x="82" y="350">Yulee</text></g>
-            <g class="spot" data-id="south"><circle class="ring" cx="232" cy="330" r="6"/><circle cx="232" cy="330" r="6"/><text x="244" y="326">South End · Ritz</text></g>
-            <g class="spot" data-id="plantation"><circle class="ring" cx="208" cy="430" r="6"/><circle cx="208" cy="430" r="6"/><text x="222" y="434">Plantation</text></g>
-          </g>
-        </svg>
-        <span class="note">Stylized · not to scale</span>
-      </div>
-      <div class="place" id="place"></div>
-    </div>
-  </div>
-</section>
-<div class="seam" data-above="#island" data-below="#communities" aria-hidden="true"></div>
-<section class="sec reel" id="communities">
-  <div class="wrap head">
-    <div class="sec-head" style="margin-bottom:0">
-      <h2 class="split">Five portals into island life.</h2>
-      <p>Scroll sideways. Each one opens a conversation with the concierge.</p>
-    </div>
-  </div>
-  <div class="track" id="reel">
-    <button class="port" data-ask="Tell me about living in Amelia Island Plantation — who it suits, what homes there are like, and what I should know before buying."><div class="art a1"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M0 220 C80 200 120 250 200 230 S320 200 400 225"/><path d="M0 250 C90 235 140 275 220 255 S330 235 400 258"/><path d="M0 190 C70 175 130 215 200 200 S330 170 400 195"/><circle cx="310" cy="70" r="26" stroke="#9CC2BD"/></svg></div><span class="idx">01 / 05</span><span class="k">The Resort</span><h3>Amelia Island Plantation</h3><p>Gated, oak-canopied, ocean and marsh views, golf and the Omni at your doorstep. Second homes and forever homes alike.</p><span class="go">Ask the concierge →</span></button>
-    <button class="port" data-ask="What is Crane Island like? I'm interested in new construction on Amelia Island."><div class="art a2"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M60 260 L60 120 L200 60 L340 120 L340 260"/><path d="M110 260 L110 150 L290 150 L290 260"/><path d="M170 260 L170 190 L230 190 L230 260"/></svg></div><span class="idx">02 / 05</span><span class="k">New Construction</span><h3>Crane Island</h3><p>A brand-new island village on the Intracoastal — porches, boardwalks, and homes you can still pick finishes on.</p><span class="go">Ask the concierge →</span></button>
-    <button class="port" data-ask="I love historic homes. What's it like to live in Fernandina Beach's Historic District?"><div class="art a3"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M40 260 L40 140 L120 90 L200 140 L200 260"/><path d="M200 260 L200 120 L280 80 L360 120 L360 260"/><path d="M70 260 L70 180 L100 180 L100 260 M230 260 L230 170 L260 170 L260 260"/><path d="M0 260 H400" stroke="#9CC2BD"/></svg></div><span class="idx">03 / 05</span><span class="k">Downtown Charm</span><h3>Historic District</h3><p>Victorian porches, Centre Street a bike ride away, shrimp boats at the marina. Fifty blocks of the Florida people move here for.</p><span class="go">Ask the concierge →</span></button>
-    <button class="port" data-ask="What's the South End of Amelia Island near the Ritz-Carlton like for a luxury beach home?"><div class="art a4"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M0 240 H400"/><path d="M60 240 L60 100 L340 100 L340 240"/><path d="M100 240 L100 140 L160 140 L160 240 M240 240 L240 140 L300 140 L300 240"/><circle cx="330" cy="50" r="18" stroke="#9CC2BD"/></svg></div><span class="idx">04 / 05</span><span class="k">Oceanfront Luxury</span><h3>South End &amp; the Ritz</h3><p>Dune-front estates and resort condos on the quietest stretch of sand, with the Ritz-Carlton as your neighbor.</p><span class="go">Ask the concierge →</span></button>
-    <button class="port" data-ask="We want more house for the money and good schools. Should we look at Yulee instead of the island?"><div class="art a5"><svg viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" stroke="#F3F0EA" stroke-width="1"><path d="M0 200 Q100 170 200 200 T400 200"/><path d="M40 200 L40 130 L110 90 L180 130 L180 200"/><path d="M220 200 L220 140 L290 100 L360 140 L360 200"/><path d="M0 260 Q100 230 200 260 T400 260"/></svg></div><span class="idx">05 / 05</span><span class="k">Mainland Value</span><h3>Yulee</h3><p>Ten minutes over the bridge: newer neighborhoods, bigger lots, A-rated schools, and the island still in your weekend.</p><span class="go">Ask the concierge →</span></button>
-    <div class="end"></div>
-  </div>
-</section>
-<section class="sec book" id="book">
-  <div class="wrap">
-    <div class="sec-head">
-      <h2 class="split">Kelly's island book.</h2>
-      <p>Eighteen years of beaches, tables, and the weekends worth planning around. Tap any one to ask the concierge about living near it.</p>
-    </div>
-    <div class="tabs" id="bookTabs" role="tablist" aria-label="Island book categories"></div>
-    <div class="book-grid" id="bookGrid"></div>
-  </div>
-</section>
-<section class="sec list" id="listings">
-  <div class="wrap">
-    <div class="sec-head">
-      <h2 class="split">On the market now.</h2>
-      <p>Six sample homes while the MLS feed is connected; Kelly's live listings replace these. Hover any home to ask the concierge about it.</p>
-    </div>
-    <div class="grid" id="listingGrid"></div>
-    <p class="note">Prices and specs mirror current brokerage listings; photography and addresses are placeholders pending MLS feed integration.</p>
-  </div>
-</section>
-<section class="sec relo" id="relocate">
-  <div class="wrap">
-    <div>
-      <span class="eyebrow">Relocation brief</span>
-      <h2 style="margin-top:14px">From <em>your city</em> to the island, on one page.</h2>
-      <p class="lede">Kelly made the move from Boston. Tell the concierge where you're coming from and it drafts the brief she'd walk you through on your first call.</p>
-      <form id="reloForm">
-        <div class="row"><input id="reloCity" type="text" placeholder="Coming from (e.g. Boston, MA)" aria-label="Your city" required><select id="reloWho" aria-label="Who's moving"><option>Just me</option><option>Couple</option><option>Family with kids</option><option>Retiring</option><option>Remote worker</option></select></div>
-        <div class="row"><select id="reloWhy" aria-label="Why"><option>Primary residence</option><option>Second home</option><option>Investment property</option></select><select id="reloBudget" aria-label="Budget"><option>Under $500K</option><option>$500K – $900K</option><option>$900K – $1.5M</option><option>$1.5M+</option></select></div>
-        <button class="btn primary" type="submit" style="justify-self:start">Draft my brief <span class="arr">→</span></button>
-      </form>
-    </div>
-    <div class="brief" id="brief">
-      <div class="hd"><span class="display">Relocation Brief</span><span class="mono" id="briefFor">Awaiting details</span></div>
-      <div class="body empty" id="briefBody">Your brief will appear here — the feel of the island, where to look, the numbers to think about, logistics, and what your first 30 days with Kelly look like.</div>
-      <span class="stamp">— Kelly's Island Concierge</span>
-    </div>
-  </div>
-</section>
+
 <section class="sec proc" id="process">
   <div class="wrap">
     <div class="sec-head">
       <h2 class="split">Contract to closing, protected.</h2>
-      <p>Every transaction should feel personal, seamless, and results-driven. Here's the shape of working with Kelly.</p>
+      <p>Here is what working with Kelly looks like, start to finish.</p>
     </div>
     <div class="steps">
-      <div class="step rv pre"><span class="mono">01 · Listen</span><h3>Your goals, on the record</h3><p>A real conversation about lifestyle, timing, and numbers — before a single showing or comp.</p></div>
-      <div class="step rv pre"><span class="mono">02 · Position</span><h3>Prepare &amp; price with strategy</h3><p>Sellers: staging guidance, positioning, and pricing that draws offers fast. Buyers: a shortlist that fits, not a firehose.</p></div>
-      <div class="step rv pre"><span class="mono">03 · Negotiate</span><h3>Fiercely, on your behalf</h3><p>Responsive and detail-oriented from offer through inspection, appraisal, and every deadline in between.</p></div>
-      <div class="step rv pre"><span class="mono">04 · Close</span><h3>Keys — and a neighbor</h3><p>Local connections for movers, contractors, schools, and the best shrimp on Centre Street. Kelly stays in your corner.</p></div>
+      <div class="step rv pre"><span class="mono">01 · Listen</span><h3>Your goals, on the record</h3><p>A real conversation about how you live, your timing and your numbers. Before any showing, before any comp.</p></div>
+      <div class="step rv pre"><span class="mono">02 · Position</span><h3>Prepare &amp; price with strategy</h3><p>Sellers get staging notes, a position and a price that pulls offers. Buyers get a short list, not a firehose.</p></div>
+      <div class="step rv pre"><span class="mono">03 · Negotiate</span><h3>Fiercely, on your behalf</h3><p>Offer, inspection, appraisal, every deadline in between. Kelly answers her phone.</p></div>
+      <div class="step rv pre"><span class="mono">04 · Close</span><h3>Keys, and a neighbor</h3><p>Movers, contractors, schools, the best shrimp on Centre Street. Kelly stays in your corner after closing.</p></div>
     </div>
   </div>
 </section>
+
 <section class="sec testi" id="reviews">
   <div class="wrap">
     <div class="grid">
@@ -431,15 +397,15 @@ html.loading{overflow:hidden}
     </div>
   </div>
 </section>
-<div class="seam" data-above="#reviews" data-below="#contact" aria-hidden="true"></div>
+
 <section class="sec contact" id="contact">
   <div class="wrap">
     <div class="rv pre">
       <span class="eyebrow">Let's talk</span>
-      <h2 style="margin-top:14px">Your island life starts with a <em>conversation.</em></h2>
+      <h2 style="margin-top:14px">Start with a <em>text.</em></h2>
       <div class="lines">
         <a href="tel:15125789942"><span>Call</span><span>512-578-9942</span></a>
-        <a href="sms:15125789942"><span>Text</span><span>Same number — she's fast</span></a>
+        <a href="sms:15125789942"><span>Text</span><span>Same number. She answers.</span></a>
         <a href="https://www.instagram.com/kellysellsthecoast/" target="_blank" rel="noopener"><span>IG</span><span>@kellysellsthecoast</span></a>
         <a href="https://maps.apple.com/?q=203+Centre+St+Fernandina+Beach+FL" target="_blank" rel="noopener"><span>Office</span><span>203 Centre St, Fernandina Beach, FL 32034</span></a>
       </div>
@@ -467,30 +433,6 @@ html.loading{overflow:hidden}
   </div>
 </section>
 
-<div class="rail">
-  <div class="wrap">
-    <div class="stat"><div class="n"><span data-count="18">0</span><sup>yrs</sup></div><div class="l">Living on Amelia Island</div></div>
-    <div class="stat"><div class="n"><span data-count="5.0" data-dec="1">0.0</span><sup>★</sup></div><div class="l">Zillow rating · 12 verified reviews</div></div>
-    <div class="stat"><div class="n"><span data-count="30">0</span><sup>+</sup></div><div class="l">Homes sold, $102K to $1.1M</div></div>
-    <div class="stat"><div class="n"><span data-count="30">0</span><sup>days</sup></div><div class="l">"We sold within 30 days" — a recent seller</div></div>
-  </div>
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <footer>
   <div class="wrap">
     <div class="top">
@@ -506,7 +448,7 @@ html.loading{overflow:hidden}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<link rel="modulepreload" href="/js/core.js"><link rel="modulepreload" href="/js/preloader.js"><link rel="modulepreload" href="/js/hero.js"><link rel="modulepreload" href="/js/motion.js"><link rel="modulepreload" href="/js/map.js"><link rel="modulepreload" href="/js/listings.js"><link rel="modulepreload" href="/js/concierge.js"><link rel="modulepreload" href="/js/voice.js"><link rel="modulepreload" href="/js/leads.js"><link rel="modulepreload" href="/js/match.js"><link rel="modulepreload" href="/js/compare.js"><link rel="modulepreload" href="/js/afford.js"><link rel="modulepreload" href="/js/value.js"><link rel="modulepreload" href="/js/book.js"><link rel="modulepreload" href="/js/polish.js"><link rel="modulepreload" href="/js/atmosphere.js"><link rel="modulepreload" href="/js/gl/ticker.js"><link rel="modulepreload" href="/js/gl/program.js"><link rel="modulepreload" href="/js/gl/glsl.js"><link rel="modulepreload" href="/js/gl/tier.js"><link rel="modulepreload" href="/js/gl/sun.js"><link rel="modulepreload" href="/js/gl/layer.js"><link rel="modulepreload" href="/js/gl/sched.js"><link rel="modulepreload" href="/js/gl/views/seam.js">
+<link rel="modulepreload" href="/js/core.js"><link rel="modulepreload" href="/js/onboard.js"><link rel="modulepreload" href="/js/hero.js"><link rel="modulepreload" href="/js/motion.js"><link rel="modulepreload" href="/js/map.js"><link rel="modulepreload" href="/js/listings.js"><link rel="modulepreload" href="/js/concierge.js"><link rel="modulepreload" href="/js/voice.js"><link rel="modulepreload" href="/js/leads.js"><link rel="modulepreload" href="/js/match.js"><link rel="modulepreload" href="/js/value.js"><link rel="modulepreload" href="/js/data.js">
 <script type="module" src="/js/main.js"></script>
 </body>
 </html>
