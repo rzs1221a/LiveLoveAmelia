@@ -1,4 +1,4 @@
-/* Concierge chat, ⌘K palette, FAB. Everything else hooks in through the lla:* events. */
+/* Concierge chat and the FAB. Everything else hooks in through the lla:* events. */
 import { $, $$, reduce, sessionId, emit, demoHeaders, track, splitChips } from './core.js';
 export { splitChips };
 
@@ -56,33 +56,3 @@ $('#chatForm').addEventListener('submit', e => { e.preventDefault(); const q = i
 stopBtn.addEventListener('click', () => { emit('lla:stop', {}); ctl && ctl.abort(); });
 document.addEventListener('click', e => { const b = e.target.closest('[data-ask]'); if (!b) return; e.preventDefault(); goAsk(b.dataset.ask); });
 $('#fab').addEventListener('click', () => { $('#concierge').scrollIntoView({ behavior: 'smooth' }); setTimeout(() => input.focus(), 600); });
-
-/* ---------- ⌘K palette ---------- */
-(function () {
-  const pal = $('#pal'), pin = $('#palInput'), sug = $('#palSug'); if (!pal) return;
-  const S = [
-    ['Where should a family from up north look?', 'Relocate'], ['Plantation vs. Historic District?', 'Compare'], ['How does Kelly price a listing?', 'Sell'], ['What does flood insurance look like here?', 'Buy'], ['Is Crane Island worth a look?', 'New build'],
-  ];
-  let sel = -1;
-  function render(q) {
-    const list = q ? [[q, 'Ask']] : S;
-    sug.innerHTML = list.map(s => `<button type="button" data-q="${s[0].replace(/"/g, '&quot;')}"><span>${s[0]}</span><span>${s[1]}</span></button>`).join('');
-    sel = -1;
-  }
-  function open() { pal.classList.add('open'); pin.value = ''; render(''); setTimeout(() => pin.focus(), 30); }
-  function close() { pal.classList.remove('open'); }
-  $('#palBtn').onclick = open;
-  addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); pal.classList.contains('open') ? close() : open(); }
-    if (e.key === 'Escape') { close(); $('#drawer').classList.remove('open'); }
-  });
-  pal.addEventListener('click', e => { if (e.target === pal) close(); });
-  pin.addEventListener('input', () => render(pin.value.trim()));
-  pin.addEventListener('keydown', e => {
-    const btns = $$('button', sug);
-    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(btns.length - 1, sel + 1); btns.forEach((b, i) => b.classList.toggle('sel', i === sel)); }
-    if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); btns.forEach((b, i) => b.classList.toggle('sel', i === sel)); }
-    if (e.key === 'Enter') { e.preventDefault(); const q = sel >= 0 ? btns[sel].dataset.q : pin.value.trim(); if (q) { close(); goAsk(q); } }
-  });
-  sug.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; close(); goAsk(b.dataset.q); });
-})();

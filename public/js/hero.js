@@ -1,11 +1,22 @@
-/* Hero: the sea, under the real sky over Amelia Island, plus the intro. */
+/* Hero: the sea, under a daytime sky over Amelia Island, plus the intro.
+ *
+ * The sky used to follow the real sun and moon. It now holds a morning over
+ * the Atlantic, every visit, because a black hero at a visitor's local
+ * midnight read as a broken page, and the ocean is what the page is for. */
 import { $, $$, reduce, hasGsap } from './core.js';
-import { loaderDone } from './preloader.js';
 import * as ticker from './gl/ticker.js';
 import { context, program, drawQuad } from './gl/program.js';
 import { NOISE } from './gl/glsl.js';
-import { almanac, project, AMELIA_LAT } from './gl/sun.js';
+import { project, CAMERA_YAW } from './gl/sun.js';
 import * as tier from './gl/tier.js';
+
+/* A morning sun, a little south of east and sixteen degrees up: in frame,
+ * low enough to lay a glint path across the water, high enough that the
+ * palette is full day rather than sunrise. No moon. */
+const SUN_AZ = CAMERA_YAW + 24, SUN_ALT = 16;
+let frames = 0;
+/* For the smoke test: what sky this is, and whether it is actually drawing. */
+export const debug = () => ({ sunAlt: SUN_ALT, frames });
 
 /* ---------- Sea and sky ---------- */
 (function sea() {
@@ -177,15 +188,7 @@ import * as tier from './gl/tier.js';
     prog.use(); size(); lost = false; ticker.add(draw);
   });
 
-  /* The sky only needs recomputing on a human timescale. */
-  let sky = null, skyAt = -1e9;
-  function refreshSky(now) {
-    if (now - skyAt < 60) return;
-    skyAt = now;
-    const a = almanac(new Date(), AMELIA_LAT);
-    const s = project(a.sun.az, a.sun.alt), mo = project(a.moon.az, a.moon.alt);
-    sky = { s, mo, sunAlt: a.sun.alt, moonAlt: a.moon.alt, illum: a.moon.illum };
-  }
+  const sky = { s: project(SUN_AZ, SUN_ALT), mo: { x: 0, y: 0, inFrame: 0 }, sunAlt: SUN_ALT, moonAlt: -30, illum: 0 };
 
   let heroFrame = 0;
   function draw(now, dt) {
@@ -193,7 +196,6 @@ import * as tier from './gl/tier.js';
     /* Half rate. The swell is slow enough that nobody can tell, and this is
      * the largest single draw on the page. */
     if (ticker.refreshHz() >= 50 && (++heroFrame & 1)) return;
-    refreshSky(now);
     /* Frame-rate independent easing, so the parallax feels the same at 60 and 120. */
     const k = 1 - Math.pow(0.001, dt / 1000 * 0.6);
     mx += (tx - mx) * k; my += (ty - my) * k;
@@ -207,6 +209,7 @@ import * as tier from './gl/tier.js';
     gl.uniform1f(prog.u('uMoonAlt'), sky.moonAlt);
     gl.uniform1f(prog.u('uSid'), now * 0.0006);
     drawQuad(gl, prog);
+    frames++;
   }
   ticker.add(draw);
   /* Stop drawing, but leave the canvas holding its last frame. Removing it
@@ -222,9 +225,7 @@ import * as tier from './gl/tier.js';
   const tl = gsap.timeline({ paused: true });
   tl.to(lines, { y: 0, duration: 1.1, stagger: .12, ease: 'power4.out' }, 0.1)
     .from('.hero .eyebrow, .hero .sub, .hero .cta', { opacity: 0, y: 18, duration: .8, stagger: .1, ease: 'power3.out' }, '-=.7')
-    .from('#concierge', { opacity: 0, y: 40, duration: 1.2, ease: 'power3.out' }, '-=.9');
-  loaderDone.then(() => tl.play());
-  /* The chat panel is the product; it drifts a little slower than the page
-   * so the eye stays on it while the hero scrolls away. */
-  gsap.to('#concierge', { yPercent: 8, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+    .from('#portrait', { opacity: 0, y: 40, duration: 1.2, ease: 'power3.out' }, '-=.9');
+  tl.play();
+  gsap.to('#portrait', { yPercent: 10, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
 })();

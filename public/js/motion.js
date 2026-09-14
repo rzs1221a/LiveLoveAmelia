@@ -45,6 +45,7 @@ import { $, $$, reduce, hasGsap, reveal } from './core.js';
   if (drawer && burger) burger.onclick = () => drawer.classList.add('open');
   if (drawer && drawerX) drawerX.onclick = () => drawer.classList.remove('open');
   if (drawer) $$('#drawer a').forEach(a => a.onclick = () => drawer.classList.remove('open'));
+  if (drawer) addEventListener('keydown', e => { if (e.key === 'Escape') drawer.classList.remove('open'); });
 })();
 
 /* ---------- Split text, counters, reveals ---------- */
