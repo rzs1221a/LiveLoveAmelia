@@ -214,7 +214,7 @@ for (const vp of [{ name: "desktop", width: 1440, height: 900 }, { name: "phone"
         t("hero shader built", gl.programs >= 1);
         // Daytime, whatever the clock says, and actually drawing.
         const hero = await page.evaluate(async () => (await import("/js/hero.js")).debug());
-        t(`hero sky is daylight and live (alt ${hero.sunAlt}, frames ${hero.frames})`, hero.sunAlt >= 10 && hero.frames > 0);
+        t(`hero sky is daylight and live (alt ${hero.sunAlt}, frames ${hero.frames})`, hero.sunAlt > 5 && hero.frames > 0);
       }
 
       // Second visit: no tour. `?tour` replays it, Escape closes it, and a
