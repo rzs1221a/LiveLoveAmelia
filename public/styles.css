@@ -69,7 +69,7 @@ nav .right{display:flex;gap:10px;align-items:center}
 .hero{min-height:100svh;background:var(--marsh);color:var(--sand);position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:flex-end}
 .hero canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
 .hero .sea{position:absolute;inset:0;z-index:0;background:radial-gradient(120% 55% at 50% 100%,rgba(94,143,139,.38),transparent 62%),radial-gradient(60% 40% at 78% 8%,rgba(156,194,189,.14),transparent 70%),linear-gradient(180deg,#0B161F 0%,#101E2B 40%,#1B3145 68%,#173B36 100%)}
-.hero .veil{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(11,22,31,.45) 0%,rgba(11,22,31,.1) 40%,rgba(11,22,31,.6) 100%)}
+.hero .veil{position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(11,22,31,.45) 0%,rgba(11,22,31,.08) 40%,rgba(11,22,31,.42) 100%)}
 .hero .wrap{position:relative;z-index:1;display:grid;grid-template-columns:1.02fr .98fr;gap:56px;align-items:center;padding:118px 0 72px}
 .hero h1{font-size:clamp(46px,5.6vw,88px);font-weight:300;line-height:.96;color:var(--sand)}
 .hero h1 .l{display:block;overflow:hidden}
