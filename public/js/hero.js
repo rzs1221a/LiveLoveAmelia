@@ -55,13 +55,13 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
   vec3 seaDeep(float a){
     vec3 c = vec3(0.008,0.016,0.032);
     c = mix(c, vec3(0.030,0.055,0.090), smoothstep(-18.,-4., a));
-    c = mix(c, vec3(0.050,0.100,0.150), smoothstep(-4., 10., a));
+    c = mix(c, vec3(0.040,0.095,0.150), smoothstep(-4., 10., a));
     return c;
   }
   vec3 seaNear(float a){
     vec3 c = vec3(0.020,0.040,0.070);
     c = mix(c, vec3(0.090,0.150,0.190), smoothstep(-18.,-4., a));
-    c = mix(c, vec3(0.150,0.290,0.360), smoothstep(-4., 10., a));
+    c = mix(c, vec3(0.190,0.370,0.440), smoothstep(-4., 10., a));
     return c;
   }
 
@@ -126,10 +126,19 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
     } else {
       float d = (hor - uv.y) / hor;
       float persp = 1.0 / (d * 6.0 + 0.06);
-      vec2 w = vec2(q.x * persp * 1.4 + m.x * 0.15, persp * 2.2 + t * 0.22);
-      float wv = fbm(w * 1.3) * 0.7 + fbm3(w * 3.1 + t * 0.05) * 0.3;
-      float crest = smoothstep(0.62, 0.9, wv);
-      col = mix(seaDeep(pa), seaNear(pa), d * 0.9 + wv * 0.25);
+      /* The field flows toward the viewer (minus t), the way swell comes in
+       * to a beach. It used to flow the other way, which read as the whole
+       * sea creeping up the screen. */
+      vec2 w = vec2(q.x * persp * 1.4 + m.x * 0.15, persp * 2.2 - t * 0.30);
+      /* Long rolling swell lines, bent a little along x so they are not
+       * ruler-straight, under the noise that gives them texture. */
+      float swell = 0.5 + 0.5 * sin(w.y * 2.4 + sin(w.x * 0.6 + t * 0.35) * 0.9 - t * 0.5);
+      float wv = fbm(w * 1.3) * 0.50 + fbm3(w * 3.1 - t * 0.08) * 0.22 + swell * 0.38;
+      /* Detail fades toward the horizon, where the perspective frequency
+       * would otherwise shimmer at every frame. */
+      float det = smoothstep(0.0, 0.22, d);
+      float crest = smoothstep(0.58, 0.86, wv) * det;
+      col = mix(seaDeep(pa), seaNear(pa), d * 0.75 + wv * 0.55);
 
       /* A glint path only exists when something is up there to cast it. */
       float sunUp = smoothstep(-2.0, 4.0, a) * uSun.z;
@@ -142,7 +151,9 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
         float g = exp(-pow(abs(q.x - uMoon.x * aspect) * (3.5 + d * 11.0), 2.0)) * (1.0 - d) * (0.45 + wv);
         col += vec3(0.80,0.86,0.95) * g * 0.30 * pow(1.0 - d, 1.6) * moonUp;
       }
-      col += vec3(0.8,0.88,0.9) * crest * 0.10 * (1.0 - d) * mix(0.35, 1.0, smoothstep(-8.0, 4.0, pa));
+      col += vec3(0.86,0.93,0.94) * crest * 0.24 * (1.0 - d * 0.55) * mix(0.35, 1.0, smoothstep(-8.0, 4.0, pa));
+      /* Troughs go darker, so the swell reads as shape rather than as stripes of light. */
+      col *= 1.0 - 0.18 * (1.0 - wv) * det;
       col = mix(col, hcol * 0.9, pow(1.0 - d, 14.0) * 0.5);
     }
 
@@ -193,9 +204,9 @@ export const debug = () => ({ sunAlt: SUN_ALT, frames });
   let heroFrame = 0;
   function draw(now, dt) {
     if (!vis || lost || stopped) return;
-    /* Half rate. The swell is slow enough that nobody can tell, and this is
-     * the largest single draw on the page. */
-    if (ticker.refreshHz() >= 50 && (++heroFrame & 1)) return;
+    /* Every frame on a 60Hz panel; every other frame on 120Hz and up, which
+     * is still 60. Halving a 60Hz panel to 30 made the crests stutter. */
+    if (ticker.refreshHz() >= 100 && (++heroFrame & 1)) return;
     /* Frame-rate independent easing, so the parallax feels the same at 60 and 120. */
     const k = 1 - Math.pow(0.001, dt / 1000 * 0.6);
     mx += (tx - mx) * k; my += (ty - my) * k;
